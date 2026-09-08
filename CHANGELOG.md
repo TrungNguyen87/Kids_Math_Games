@@ -5,7 +5,49 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Added
+### Added (round 2)
+- **Manual level picker.** Every game now shows a row of clickable 1-5
+  level buttons at the top (`utils/ui.py: level_control`), so leveling up
+  is an explicit, visible action a child (or parent) can take directly -
+  on top of the automatic adaptive leveling from round 1, which still runs
+  in the background.
+- **Visualizations everywhere** (`utils/visuals.py`, pure inline SVG, no
+  new dependency): a pizza chart / fraction bar that updates live, a
+  percent fill bar, a dot array for multiplication, an analog clock face,
+  tape diagrams (bar models) for money and part-whole problems, a ratio
+  bar, a balance scale for equations, a number line for negative numbers,
+  and labeled rectangle/triangle/cuboid shapes for geometry. Visuals only
+  ever show the *given* numbers in a question, never the answer.
+- **Interactive fraction explorer** on Breuken Baas: a free-play slider
+  section ("🔍 Probeer het zelf uit!") where changing the numerator or
+  denominator instantly redraws the pizza and its percentage - exactly the
+  "pick a fraction, watch the pizza/percentage change" interaction asked
+  for. Tafel Monster also gained an optional "show me a picture" hint
+  revealing a dot array for the current problem.
+- **4 new games** for the end of groep 7 / middle of groep 8:
+  - 🕵️ **Het X-Mysterie** - solving equations for x (one-step through
+    two-step, including negative solutions), up to a **2-variable linear
+    system** (`x + y = S`, `x - y = D`) at the top level, visualized as a
+    balance scale.
+  - 📐 **Meetkunde Meesters** - perimeter & area of rectangles, triangle
+    area, compound-shape area, cuboid volume, and missing-angle problems
+    (triangle/quadrilateral angle sums), each with a labeled shape drawing.
+  - 🚗 **Verhoudingen & Snelheid** - simplifying ratios, map scale, speed =
+    distance/time (solving for any of the three), unit price, and
+    multi-step speed/time word problems.
+  - 🔢 **Getallen Universum** - negative number arithmetic on a number
+    line, two-digit long multiplication, long division with remainder, and
+    decimal multiplication/division.
+  All four follow the same pattern as the original games: 5 adaptive +
+  manually-selectable levels, full NL/EN translation, and session logging.
+
+### Fixed
+- Page filenames are now zero-padded (`01_`...`10_`) so Streamlit's
+  filename-based nav sorts correctly now that there are 10 pages (`10_`
+  used to sort before `1_`-`9_` alphabetically).
+- Check/Next buttons on every game now have explicit widget keys.
+
+### Added (round 1)
 - **Adaptive difficulty levels (1-5) for every game.** Each game (Tafel Monster,
   Breuken Baas, Meten is Weten, Procenten Puzzel) now starts at an easy level
   and automatically levels up after 3 correct answers in a row, and eases

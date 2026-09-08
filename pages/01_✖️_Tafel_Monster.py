@@ -12,11 +12,12 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import (
+    level_control,
     page_header,
     set_custom_css,
-    show_level_badge,
     sidebar_common,
 )
+from utils.visuals import array_grid_svg
 
 GAME_KEY = "tafel"
 
@@ -33,8 +34,8 @@ page_header("tafel.title", emoji="🚀")
 st.caption(t("tafel.tagline"))
 st.markdown(t("tafel.intro"))
 
+level_control(GAME_KEY, "tafel_problem")
 level = get_level(GAME_KEY)
-show_level_badge(level)
 points = 5 * (level + 1)
 
 WORD_TEMPLATES = ["tafel.word_boxes", "tafel.word_rows", "tafel.word_moons"]
@@ -80,7 +81,7 @@ def generate_problem():
         text = t(random.choice(WORD_TEMPLATES), a=a, b=b)
         answer = product
 
-    st.session_state.tafel_problem = {"text": text, "answer": answer}
+    st.session_state.tafel_problem = {"text": text, "answer": answer, "a": a, "b": b}
     st.session_state.tafel_feedback = None
 
 
@@ -91,13 +92,16 @@ problem = st.session_state.tafel_problem
 
 st.markdown(f"### 👾 {problem['text']}")
 
+with st.expander(t("common.show_visual_hint")):
+    st.markdown(array_grid_svg(problem["a"], problem["b"]), unsafe_allow_html=True)
+
 user_ans = st.number_input(t("common.your_answer"), step=1, value=None, key="tafel_input")
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    check_clicked = st.button(t("tafel.check_button"))
+    check_clicked = st.button(t("tafel.check_button"), key="check_btn")
 with col2:
-    next_clicked = st.button(t("tafel.next_button"))
+    next_clicked = st.button(t("tafel.next_button"), key="next_btn")
 
 if check_clicked:
     is_correct = user_ans is not None and user_ans == problem["answer"]

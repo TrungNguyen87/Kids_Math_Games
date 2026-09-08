@@ -12,11 +12,12 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import (
+    level_control,
     page_header,
     set_custom_css,
-    show_level_badge,
     sidebar_common,
 )
+from utils.visuals import clock_svg, ratio_bar_svg, tape_diagram_svg
 
 GAME_KEY = "meten"
 
@@ -33,8 +34,8 @@ page_header("meten.title", emoji="🏗️")
 st.caption(t("meten.tagline"))
 st.markdown(t("meten.intro"))
 
+level_control(GAME_KEY, "meten_problem")
 level = get_level(GAME_KEY)
-show_level_badge(level)
 points = 5 * (level + 1)
 
 CONVERSIONS = [
@@ -56,6 +57,7 @@ def format_euro(value):
 
 def generate_problem():
     answer_kind = "int"  # "int" or "euro"
+    visual = None
 
     if level == 1:
         unit1, unit2, factor = random.choice(CONVERSIONS)
@@ -85,6 +87,7 @@ def generate_problem():
         text = t("meten.q_combo", a=a, u_big=unit_big, b=b, u_small=unit_small)
         answer = a * factor + b
         answer_label = t("meten.answer_label_generic")
+        visual = ("ratio", [a * factor, b], [f"{a} {unit_big}", f"{b} {unit_small}"])
 
     elif level == 4:
         start_minutes = random.randint(0, 23 * 60 + 55 - 180)
@@ -96,6 +99,7 @@ def generate_problem():
         text = t(key, t1=t1, t2=t2)
         answer = gap
         answer_label = t("meten.answer_label_minutes")
+        visual = ("clock", start_minutes, end_minutes)
 
     else:
         answer_kind = "euro"
@@ -105,11 +109,13 @@ def generate_problem():
             paid = min(notes) if notes else 20
             text = t("meten.q_money_change", price=format_euro(price), paid=format_euro(paid))
             answer = round(paid - price, 2)
+            visual = ("tape", paid, price)
         else:
             price = random.choice([0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5])
             qty = random.randint(2, 6)
             text = t("meten.q_money_total", qty=qty, price=format_euro(price))
             answer = round(price * qty, 2)
+            visual = ("ratio", [price] * qty, [f"€{format_euro(price)}"] * qty)
         answer_label = t("meten.answer_label_euro")
 
     st.session_state.meten_problem = {
@@ -117,6 +123,7 @@ def generate_problem():
         "answer": answer,
         "answer_kind": answer_kind,
         "answer_label": answer_label,
+        "visual": visual,
     }
     st.session_state.meten_feedback = None
 
@@ -128,6 +135,24 @@ problem = st.session_state.meten_problem
 
 st.markdown(f"### 🧱 {problem['text']}")
 
+visual = problem.get("visual")
+if visual and visual[0] == "clock":
+    _, start_minutes, end_minutes = visual
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(clock_svg(start_minutes // 60, start_minutes % 60), unsafe_allow_html=True)
+    with c2:
+        st.markdown(clock_svg(end_minutes // 60, end_minutes % 60), unsafe_allow_html=True)
+elif visual and visual[0] == "tape":
+    _, total, part = visual
+    st.markdown(
+        tape_diagram_svg(total, part, total_label=f"€{format_euro(total)}", part_label=f"€{format_euro(part)}", rest_label="?"),
+        unsafe_allow_html=True,
+    )
+elif visual and visual[0] == "ratio":
+    _, parts, labels = visual
+    st.markdown(ratio_bar_svg(parts, labels=labels), unsafe_allow_html=True)
+
 if problem["answer_kind"] == "euro":
     user_val = st.number_input(problem["answer_label"], step=0.01, value=None, format="%.2f", key="meten_input_euro")
 else:
@@ -135,9 +160,9 @@ else:
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    check_clicked = st.button(t("meten.check_button"))
+    check_clicked = st.button(t("meten.check_button"), key="check_btn")
 with col2:
-    next_clicked = st.button(t("meten.next_button"))
+    next_clicked = st.button(t("meten.next_button"), key="next_btn")
 
 if check_clicked:
     if user_val is not None:
