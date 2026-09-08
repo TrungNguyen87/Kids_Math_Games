@@ -1,50 +1,67 @@
 import streamlit as st
-from utils.state import init_state
-from utils.ui import set_custom_css, show_score, bilingual_header, bilingual_text
 
-# Page config
-st.set_page_config(
-    page_title="Math Games for Groep 6 & 7",
-    page_icon="🎮",
-    layout="wide",
-    initial_sidebar_state="expanded"
+from utils.i18n import init_language, t
+from utils.state import GAME_KEYS, get_level, init_state
+from utils.ui import (
+    level_label,
+    page_header,
+    set_custom_css,
+    sidebar_common,
 )
 
-# Initialize state
 init_state()
+init_language()
 
-# Inject CSS
+st.set_page_config(
+    page_title=t("app.title"),
+    page_icon="🎮",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 set_custom_css()
 
-# Sidebar
 with st.sidebar:
     st.image("https://api.dicebear.com/7.x/bottts/svg?seed=Math&backgroundColor=ffdfbf", width=150)
-    st.markdown("### 🏆 Jouw Score <span class='eng-sub'>(Your Score)</span>", unsafe_allow_html=True)
-    show_score()
-    st.markdown("---")
-    st.markdown("Kies een spel uit het menu hierboven! <br><span class='eng-sub'>(Choose a game from the menu above!)</span>", unsafe_allow_html=True)
+    sidebar_common()
 
-# Main Dashboard
-bilingual_header("Welkom bij de Reken Spelletjes!", "Welcome to the Math Games!", emoji="🎮")
+page_header("home.title", "home.subtitle", emoji="🎮")
 
-st.markdown(f"""
-### Klaar om te spelen? <span class='eng-sub'>(Ready to play?)</span>
+st.text_input(
+    t("dash.player_name_label"),
+    key="player_name",
+    placeholder=t("dash.player_name_placeholder"),
+)
 
-Hier kun je rekenen oefenen en punten verdienen! Kies links in het menu een spel uit.
-<br><span class='eng-sub'>(Here you can practice math and earn points! Choose a game from the menu on the left.)</span>
+st.markdown(t("home.intro"))
 
----
+st.markdown("---")
+st.markdown(f"### {t('home.games_heading')}")
+st.markdown(
+    f"""
+* {t('home.game_tafel')}
+* {t('home.game_breuken')}
+* {t('home.game_meten')}
+* {t('home.game_procenten')}
+* {t('home.game_uitleg')}
+* {t('home.game_dashboard')}
+"""
+)
 
-**Spelletjes:**
-* ✖️ **Tafel Monster** *(Space Theme)* - Keersommen (Multiplication)
-* 🍕 **Breuken Baas** *(Pizza Theme)* - Breuken (Fractions)
-* 📏 **Meten is Weten** *(Builder Theme)* - Meten & Wegen (Measurement)
-* 📖 **Uitleg Concepten** - Hulp nodig? Kijk hier! (Need help? Look here!)
-""", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown(f"### {t('home.level_overview')}")
+cols = st.columns(len(GAME_KEYS))
+for col, key in zip(cols, GAME_KEYS):
+    with col:
+        lvl = get_level(key)
+        st.metric(t(f"game.{key}.name"), f"{lvl}/5", level_label(lvl), delta_color="off")
 
-# Balloons for fun if they just started
-if st.session_state.get('total_score', 0) == 0 and st.session_state.get('games_played', 0) == 0:
-    if st.button("Start je avontuur! (Start your adventure!)"):
+st.markdown("---")
+st.markdown(f"### {t('home.about_heading')}")
+st.markdown(t("home.about_text"))
+
+if st.session_state.get("total_score", 0) == 0 and st.session_state.get("games_played", 0) == 0:
+    if st.button(t("home.start_button")):
         st.balloons()
         st.session_state.games_played += 1
         st.rerun()

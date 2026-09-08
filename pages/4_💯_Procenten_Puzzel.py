@@ -1,79 +1,196 @@
-import streamlit as st
+import math
 import random
-from utils.state import add_score
-from utils.ui import set_custom_css, show_score, bilingual_header
+
+import streamlit as st
+
+from utils import gamelog
+from utils.i18n import init_language, t
+from utils.state import (
+    add_score,
+    get_level,
+    init_state,
+    register_attempt,
+    reset_streak,
+)
+from utils.ui import (
+    page_header,
+    set_custom_css,
+    show_level_badge,
+    sidebar_common,
+)
+
+GAME_KEY = "procenten"
+
+init_state()
+init_language()
 
 st.set_page_config(page_title="Procenten Puzzel", page_icon="💯", layout="wide")
 set_custom_css()
 
 with st.sidebar:
-    show_score()
+    sidebar_common()
 
-bilingual_header("Piraten Schat: Procenten Puzzel!", "Pirate Treasure: Percentage Puzzle!", emoji="🏴‍☠️")
-st.markdown("Zoek de juiste schatkaart door de percentages, kommagetallen en breuken te matchen! <br><span class='eng-sub'>(Find the right treasure map by matching percentages, decimals, and fractions!)</span>", unsafe_allow_html=True)
+page_header("procenten.title", emoji="🏴‍☠️")
+st.caption(t("procenten.tagline"))
+st.markdown(t("procenten.intro"))
 
-if 'perc_problem' not in st.session_state:
-    st.session_state.perc_problem = None
-if 'perc_feedback' not in st.session_state:
-    st.session_state.perc_feedback = ""
+level = get_level(GAME_KEY)
+show_level_badge(level)
+points = 5 * (level + 1)
 
-def generate_perc_problem():
-    equivalents = [
-        ("1/2", "50%", "0.50"),
-        ("1/4", "25%", "0.25"),
-        ("3/4", "75%", "0.75"),
-        ("1/10", "10%", "0.10"),
-        ("1/5", "20%", "0.20")
-    ]
-    fraction, percentage, decimal = random.choice(equivalents)
-    
-    # Pick a random question type
-    q_type = random.choice(['frac_to_perc', 'perc_to_dec', 'dec_to_frac'])
-    
-    if q_type == 'frac_to_perc':
-        q_text = f"Wat is {fraction} in procenten? (What is {fraction} in percentages?)"
-        ans = percentage
-        options = ["50%", "25%", "75%", "10%", "20%", "100%"]
-    elif q_type == 'perc_to_dec':
-        q_text = f"Wat is {percentage} als kommagetal? (What is {percentage} as a decimal?)"
-        ans = decimal
-        options = ["0.50", "0.25", "0.75", "0.10", "0.20", "1.00"]
-    else:
-        q_text = f"Wat is {decimal} als breuk? (What is {decimal} as a fraction?)"
-        ans = fraction
-        options = ["1/2", "1/4", "3/4", "1/10", "1/5", "1/1"]
-        
-    random.shuffle(options)
-    st.session_state.perc_problem = (q_text, ans, options)
-    st.session_state.perc_feedback = ""
+EASY_EQUIVALENTS = [
+    ("1/2", "50%", "0.50"),
+    ("1/4", "25%", "0.25"),
+    ("3/4", "75%", "0.75"),
+    ("1/10", "10%", "0.10"),
+    ("1/5", "20%", "0.20"),
+]
+HARD_EQUIVALENTS = EASY_EQUIVALENTS + [
+    ("1/8", "12.5%", "0.125"),
+    ("3/8", "37.5%", "0.375"),
+    ("2/5", "40%", "0.40"),
+    ("3/5", "60%", "0.60"),
+    ("4/5", "80%", "0.80"),
+]
+PCT_CHOICES = [5, 10, 15, 20, 25, 50, 75]
 
-if st.session_state.perc_problem is None:
-    generate_perc_problem()
 
-q, correct_ans, opts = st.session_state.perc_problem
+def nice_base_for(pct):
+    """Pick a base number so pct% of it is a whole number."""
+    multiple = 100 // math.gcd(pct, 100)
+    return multiple * random.randint(1, 10)
 
-st.markdown(f"### 💎 {q}", unsafe_allow_html=True)
 
-user_choice = st.radio("Kies je antwoord (Choose your answer):", opts, index=None, key="perc_radio")
+def generate_problem():
+    if level == 1 or level == 4:
+        equivalents = EASY_EQUIVALENTS if level == 1 else HARD_EQUIVALENTS
+        fraction, percentage, decimal = random.choice(equivalents)
+        q_type = random.choice(["frac_to_perc", "perc_to_dec", "dec_to_frac"])
+        all_fracs = [e[0] for e in equivalents]
+        all_percs = [e[1] for e in equivalents]
+        all_decs = [e[2] for e in equivalents]
+
+        if q_type == "frac_to_perc":
+            text = t("procenten.q_equivalent_frac_to_perc", fraction=fraction)
+            answer = percentage
+            options = all_percs
+        elif q_type == "perc_to_dec":
+            text = t("procenten.q_equivalent_perc_to_dec", percentage=percentage)
+            answer = decimal
+            options = all_decs
+        else:
+            text = t("procenten.q_equivalent_dec_to_frac", decimal=decimal)
+            answer = fraction
+            options = all_fracs
+
+        options = list(dict.fromkeys(options))
+        random.shuffle(options)
+        st.session_state.perc_problem = {"mode": "choice", "text": text, "answer": answer, "options": options}
+
+    elif level == 2:
+        pct = random.choice(PCT_CHOICES)
+        base = nice_base_for(pct)
+        text = t("procenten.q_percent_of", pct=pct, base=base)
+        answer = base * pct // 100
+        st.session_state.perc_problem = {
+            "mode": "numeric",
+            "text": text,
+            "answer": answer,
+            "answer_label": t("procenten.answer_label_number"),
+        }
+
+    elif level == 3:
+        pct = random.choice(PCT_CHOICES)
+        price = nice_base_for(pct)
+        discount = price * pct // 100
+        if random.choice([True, False]):
+            text = t("procenten.q_discount_new_price", price=price, pct=pct)
+            answer = price - discount
+        else:
+            text = t("procenten.q_discount_amount", price=price, pct=pct)
+            answer = discount
+        st.session_state.perc_problem = {
+            "mode": "numeric",
+            "text": text,
+            "answer": answer,
+            "answer_label": t("procenten.answer_label_euro"),
+        }
+
+    else:  # level 5: reverse percentage
+        pct = random.choice(PCT_CHOICES)
+        complement = 100 - pct
+        multiple = 100 // math.gcd(complement, 100)
+        original = multiple * random.randint(1, 10)
+        new_price = original * complement // 100
+        saved = original - new_price
+        if random.choice([True, False]):
+            text = t("procenten.q_reverse_price", pct=pct, new_price=new_price)
+        else:
+            text = t("procenten.q_reverse_saved", pct=pct, amount=saved)
+        st.session_state.perc_problem = {
+            "mode": "numeric",
+            "text": text,
+            "answer": original,
+            "answer_label": t("procenten.answer_label_euro"),
+        }
+
+    st.session_state.perc_feedback = None
+
+
+if "perc_problem" not in st.session_state or st.session_state.perc_problem is None:
+    generate_problem()
+
+problem = st.session_state.perc_problem
+
+st.markdown(f"### 💎 {problem['text']}")
+
+if problem["mode"] == "choice":
+    user_choice = st.radio(t("common.choose_answer"), problem["options"], index=None, key="perc_radio")
+else:
+    user_choice = st.number_input(problem["answer_label"], step=1, value=None, key="perc_numeric")
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    if st.button("Graaf schat op! (Dig treasure!)"):
-        if user_choice == correct_ans:
-            st.session_state.perc_feedback = "✅ Schat gevonden! (+10 punten) <br><span class='eng-sub'>(Treasure found! +10 points)</span>"
-            add_score(10)
-            st.balloons()
-        elif user_choice is not None:
-            st.session_state.perc_feedback = "❌ Verkeerde plek gegraven. Probeer opnieuw! <br><span class='eng-sub'>(Dug in the wrong spot. Try again!)</span>"
-            st.session_state.streaks = 0
-
+    check_clicked = st.button(t("procenten.check_button"))
 with col2:
-    if st.button("Nieuwe kaart (New map) ➡️"):
-        generate_perc_problem()
+    next_clicked = st.button(t("procenten.next_button"))
+
+if check_clicked:
+    if user_choice is not None:
+        is_correct = user_choice == problem["answer"]
+        gamelog.log_attempt(
+            GAME_KEY, t("game.procenten.name"), level, problem["text"], user_choice, problem["answer"], is_correct, points
+        )
+        leveled_up, leveled_down = register_attempt(GAME_KEY, is_correct)
+        if is_correct:
+            add_score(points)
+            st.session_state.perc_feedback = ("success", t("procenten.correct", points=points))
+            st.balloons()
+        else:
+            reset_streak()
+            st.session_state.perc_feedback = (
+                "error",
+                f"{t('procenten.incorrect')} {t('common.correct_answer_was', answer=problem['answer'])}",
+            )
+        if leveled_up:
+            st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+        elif leveled_down:
+            st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         st.rerun()
 
-if st.session_state.perc_feedback:
-    if "Schat" in st.session_state.perc_feedback:
-        st.success(st.session_state.perc_feedback, icon="💰")
+if next_clicked:
+    generate_problem()
+    st.rerun()
+
+feedback = st.session_state.get("perc_feedback")
+if feedback:
+    kind, message = feedback
+    if kind == "success":
+        st.success(message, icon="💰")
     else:
-        st.error(st.session_state.perc_feedback, icon="☠️")
+        st.error(message, icon="☠️")
+
+if st.session_state.get("streaks", 0) >= 3:
+    st.info(t("common.streak_fire", streak=st.session_state.streaks))
+
+st.caption(t("common.session_recorded"))
