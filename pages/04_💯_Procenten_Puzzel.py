@@ -13,11 +13,12 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import (
+    level_control,
     page_header,
     set_custom_css,
-    show_level_badge,
     sidebar_common,
 )
+from utils.visuals import fraction_visual_svg, percent_bar_svg
 
 GAME_KEY = "procenten"
 
@@ -34,8 +35,8 @@ page_header("procenten.title", emoji="🏴‍☠️")
 st.caption(t("procenten.tagline"))
 st.markdown(t("procenten.intro"))
 
+level_control(GAME_KEY, "perc_problem")
 level = get_level(GAME_KEY)
-show_level_badge(level)
 points = 5 * (level + 1)
 
 EASY_EQUIVALENTS = [
@@ -74,18 +75,24 @@ def generate_problem():
             text = t("procenten.q_equivalent_frac_to_perc", fraction=fraction)
             answer = percentage
             options = all_percs
+            fn, fd = (int(x) for x in fraction.split("/"))
+            visual = ("frac", fn, fd)
         elif q_type == "perc_to_dec":
             text = t("procenten.q_equivalent_perc_to_dec", percentage=percentage)
             answer = decimal
             options = all_decs
+            visual = ("pct", float(percentage.rstrip("%")), percentage)
         else:
             text = t("procenten.q_equivalent_dec_to_frac", decimal=decimal)
             answer = fraction
             options = all_fracs
+            visual = ("pct", float(decimal) * 100, decimal)
 
         options = list(dict.fromkeys(options))
         random.shuffle(options)
-        st.session_state.perc_problem = {"mode": "choice", "text": text, "answer": answer, "options": options}
+        st.session_state.perc_problem = {
+            "mode": "choice", "text": text, "answer": answer, "options": options, "visual": visual,
+        }
 
     elif level == 2:
         pct = random.choice(PCT_CHOICES)
@@ -97,6 +104,7 @@ def generate_problem():
             "text": text,
             "answer": answer,
             "answer_label": t("procenten.answer_label_number"),
+            "visual": ("pct", pct, f"{pct}% van {base}"),
         }
 
     elif level == 3:
@@ -114,6 +122,7 @@ def generate_problem():
             "text": text,
             "answer": answer,
             "answer_label": t("procenten.answer_label_euro"),
+            "visual": ("pct", pct, f"{pct}% korting"),
         }
 
     else:  # level 5: reverse percentage
@@ -132,6 +141,7 @@ def generate_problem():
             "text": text,
             "answer": original,
             "answer_label": t("procenten.answer_label_euro"),
+            "visual": ("pct", complement, f"jij betaalt nog {complement}%"),
         }
 
     st.session_state.perc_feedback = None
@@ -144,6 +154,12 @@ problem = st.session_state.perc_problem
 
 st.markdown(f"### 💎 {problem['text']}")
 
+visual = problem.get("visual")
+if visual and visual[0] == "frac":
+    st.markdown(fraction_visual_svg(visual[1], visual[2]), unsafe_allow_html=True)
+elif visual and visual[0] == "pct":
+    st.markdown(percent_bar_svg(visual[1], label=visual[2]), unsafe_allow_html=True)
+
 if problem["mode"] == "choice":
     user_choice = st.radio(t("common.choose_answer"), problem["options"], index=None, key="perc_radio")
 else:
@@ -151,9 +167,9 @@ else:
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    check_clicked = st.button(t("procenten.check_button"))
+    check_clicked = st.button(t("procenten.check_button"), key="check_btn")
 with col2:
-    next_clicked = st.button(t("procenten.next_button"))
+    next_clicked = st.button(t("procenten.next_button"), key="next_btn")
 
 if check_clicked:
     if user_choice is not None:

@@ -3,10 +3,12 @@ import streamlit as st
 from utils.i18n import language_switcher, t
 from utils.state import (
     MAX_LEVEL,
+    MIN_LEVEL,
     SESSION_GOAL_MINUTES,
     get_level,
     session_accuracy,
     session_elapsed_minutes,
+    set_level,
 )
 
 DIFFICULTY_KEYS = [
@@ -155,6 +157,31 @@ def show_level_badge(level):
         f"<div class='level-badge'>⭐ {t('common.level')} {level}/{MAX_LEVEL} — {level_label(level)}</div>",
         unsafe_allow_html=True,
     )
+
+
+def level_control(game_key, problem_state_key=None):
+    """Interactive level picker (buttons 1-5) shown at the top of every
+    game. This is a *manual* override the child can click directly, on top
+    of the automatic adaptive leveling that already happens after a streak
+    of right/wrong answers - so leveling up is always visible and never
+    only something that happens invisibly in the background."""
+    current = get_level(game_key)
+    st.markdown(f"**{t('common.choose_level')}**")
+    cols = st.columns(MAX_LEVEL)
+    for i, col in enumerate(cols, start=MIN_LEVEL):
+        with col:
+            is_current = i == current
+            if st.button(
+                str(i),
+                key=f"level_btn_{game_key}_{i}",
+                type="primary" if is_current else "secondary",
+                use_container_width=True,
+            ):
+                set_level(game_key, i)
+                if problem_state_key:
+                    st.session_state[problem_state_key] = None
+                st.rerun()
+    show_level_badge(current)
 
 
 def page_header(title_key, subtitle_key=None, emoji=""):

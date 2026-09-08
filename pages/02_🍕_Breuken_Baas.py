@@ -12,11 +12,12 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import (
+    level_control,
     page_header,
     set_custom_css,
-    show_level_badge,
     sidebar_common,
 )
+from utils.visuals import fraction_visual_svg
 
 GAME_KEY = "breuken"
 
@@ -33,9 +34,19 @@ page_header("breuken.title", emoji="👨‍🍳")
 st.caption(t("breuken.tagline"))
 st.markdown(t("breuken.intro"))
 
+level_control(GAME_KEY, "breuk_problem")
 level = get_level(GAME_KEY)
-show_level_badge(level)
 points = 5 * (level + 1)
+
+with st.expander(t("common.try_it_heading"), expanded=False):
+    st.markdown(t("breuken.explore_intro"))
+    exp_col1, exp_col2 = st.columns(2)
+    with exp_col1:
+        explore_num = st.number_input(t("breuken.numerator_label"), min_value=0, max_value=20, value=1, step=1, key="explore_num")
+    with exp_col2:
+        explore_den = st.number_input(t("breuken.denominator_label"), min_value=1, max_value=20, value=4, step=1, key="explore_den")
+    explore_num = min(explore_num, explore_den)
+    st.markdown(fraction_visual_svg(explore_num, explore_den), unsafe_allow_html=True)
 
 
 def generate_problem():
@@ -46,6 +57,7 @@ def generate_problem():
         text = t("breuken.q_add", n1=n1, n2=n2, d=den)
         correct_num, correct_den = n1 + n2, den
         den_editable = False
+        visual_fracs = [(n1, den), (n2, den)]
     elif level == 2:
         den = random.choice([4, 6, 8, 10, 12])
         if random.choice([True, False]):
@@ -59,6 +71,7 @@ def generate_problem():
             text = t("breuken.q_sub", n1=n1, n2=n2, d=den)
             correct_num, correct_den = n1 - n2, den
         den_editable = False
+        visual_fracs = [(n1, den), (n2, den)]
     elif level == 3:
         factor = random.randint(2, 4)
         simplified_den = random.choice([2, 3, 4, 5, 6])
@@ -68,6 +81,7 @@ def generate_problem():
         text = t("breuken.q_simplify", n=num, d=den, new_d=simplified_den)
         correct_num, correct_den = simplified_num, simplified_den
         den_editable = False
+        visual_fracs = [(num, den)]
     elif level == 4:
         d1 = random.choice([2, 3, 4, 5])
         k = random.choice([2, 3])
@@ -77,6 +91,7 @@ def generate_problem():
         text = t("breuken.q_diff_denom", n1=n1, d1=d1, n2=n2, d2=d2)
         correct_num, correct_den = n1 * k + n2, d2
         den_editable = True
+        visual_fracs = [(n1, d1), (n2, d2)]
     else:
         den = random.choice([3, 4, 5, 6])
         num = random.randint(1, den - 1)
@@ -84,12 +99,14 @@ def generate_problem():
         text = t("breuken.q_multiply", k=k, n=num, d=den)
         correct_num, correct_den = num * k, den
         den_editable = False
+        visual_fracs = [(num, den)]
 
     st.session_state.breuk_problem = {
         "text": text,
         "correct_num": correct_num,
         "correct_den": correct_den,
         "den_editable": den_editable,
+        "visual_fracs": visual_fracs,
     }
     st.session_state.breuk_feedback = None
 
@@ -100,6 +117,11 @@ if "breuk_problem" not in st.session_state or st.session_state.breuk_problem is 
 problem = st.session_state.breuk_problem
 
 st.markdown(f"### 🍕 {problem['text']}")
+
+visual_cols = st.columns(len(problem["visual_fracs"]))
+for vcol, (vn, vd) in zip(visual_cols, problem["visual_fracs"]):
+    with vcol:
+        st.markdown(fraction_visual_svg(vn, vd), unsafe_allow_html=True)
 
 col_ans1, col_ans2 = st.columns([1, 1])
 with col_ans1:
@@ -119,9 +141,9 @@ with col_ans2:
 
 col_btn1, col_btn2 = st.columns([1, 4])
 with col_btn1:
-    check_clicked = st.button(t("breuken.check_button"))
+    check_clicked = st.button(t("breuken.check_button"), key="check_btn")
 with col_btn2:
-    next_clicked = st.button(t("breuken.next_button"))
+    next_clicked = st.button(t("breuken.next_button"), key="next_btn")
 
 if check_clicked:
     answered = user_num is not None and (not problem["den_editable"] or user_den is not None)

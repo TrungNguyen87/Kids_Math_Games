@@ -9,7 +9,16 @@ LEVEL_UP_STREAK = 3     # correct answers in a row needed to level up
 LEVEL_DOWN_STREAK = 2   # wrong answers in a row that trigger a level down
 SESSION_GOAL_MINUTES = 45
 
-GAME_KEYS = ["tafel", "breuken", "meten", "procenten"]
+GAME_KEYS = [
+    "tafel",
+    "breuken",
+    "meten",
+    "procenten",
+    "algebra",
+    "meetkunde",
+    "verhoudingen",
+    "getallen",
+]
 
 
 def init_state():
@@ -54,9 +63,13 @@ def get_level(game_key):
     return st.session_state.get("levels", {}).get(game_key, MIN_LEVEL)
 
 
-def _set_level(game_key, level):
+def set_level(game_key, level):
+    """Set a game's level directly (manual override) and reset its
+    adaptive-difficulty streak counters so they start fresh at the new
+    level."""
     level = max(MIN_LEVEL, min(MAX_LEVEL, level))
     st.session_state.levels[game_key] = level
+    st.session_state.game_streaks[game_key] = {"correct": 0, "wrong": 0}
     return level
 
 
@@ -81,15 +94,13 @@ def register_attempt(game_key, is_correct):
         streak["correct"] += 1
         streak["wrong"] = 0
         if streak["correct"] >= LEVEL_UP_STREAK and current_level < MAX_LEVEL:
-            _set_level(game_key, current_level + 1)
-            streak["correct"] = 0
+            set_level(game_key, current_level + 1)
             leveled_up = True
     else:
         streak["wrong"] += 1
         streak["correct"] = 0
         if streak["wrong"] >= LEVEL_DOWN_STREAK and current_level > MIN_LEVEL:
-            _set_level(game_key, current_level - 1)
-            streak["wrong"] = 0
+            set_level(game_key, current_level - 1)
             leveled_down = True
 
     return leveled_up, leveled_down

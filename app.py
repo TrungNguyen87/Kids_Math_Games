@@ -43,6 +43,10 @@ st.markdown(
 * {t('home.game_breuken')}
 * {t('home.game_meten')}
 * {t('home.game_procenten')}
+* {t('home.game_algebra')}
+* {t('home.game_meetkunde')}
+* {t('home.game_verhoudingen')}
+* {t('home.game_getallen')}
 * {t('home.game_uitleg')}
 * {t('home.game_dashboard')}
 """
@@ -50,11 +54,13 @@ st.markdown(
 
 st.markdown("---")
 st.markdown(f"### {t('home.level_overview')}")
-cols = st.columns(len(GAME_KEYS))
-for col, key in zip(cols, GAME_KEYS):
-    with col:
-        lvl = get_level(key)
-        st.metric(t(f"game.{key}.name"), f"{lvl}/5", level_label(lvl), delta_color="off")
+row1, row2 = GAME_KEYS[: len(GAME_KEYS) // 2], GAME_KEYS[len(GAME_KEYS) // 2 :]
+for row in (row1, row2):
+    cols = st.columns(len(row))
+    for col, key in zip(cols, row):
+        with col:
+            lvl = get_level(key)
+            st.metric(t(f"game.{key}.name"), f"{lvl}/5", level_label(lvl), delta_color="off")
 
 st.markdown("---")
 st.markdown(f"### {t('home.about_heading')}")
