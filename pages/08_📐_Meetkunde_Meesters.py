@@ -2,7 +2,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -12,6 +12,7 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import level_control, page_header, sidebar_common
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import cuboid_svg, rectangle_svg, triangle_svg
 
 GAME_KEY = "meetkunde"
@@ -43,7 +44,17 @@ with st.expander(t("common.try_it_heading"), expanded=False):
 
 
 def generate_problem():
-    if level == 1:
+    if level == 0:
+        w, h = random.randint(2, 6), random.randint(2, 6)
+        if random.choice([True, False]):
+            text = t("meetkunde.q_perimeter", w=w, h=h, unit=UNIT)
+            answer, unit_suffix = 2 * (w + h), UNIT
+        else:
+            text = t("meetkunde.q_area_rect", w=w, h=h, unit=UNIT)
+            answer, unit_suffix = w * h, f"{UNIT}²"
+        visual = ("rect", w, h)
+
+    elif level == 1:
         w, h = random.randint(2, 12), random.randint(2, 12)
         if random.choice([True, False]):
             text = t("meetkunde.q_perimeter", w=w, h=h, unit=UNIT)
@@ -141,8 +152,10 @@ if check_clicked:
             add_score(points)
             st.session_state.meetkunde_feedback = ("success", t("meetkunde.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.meetkunde_feedback = (
                 "error",
                 f"{t('meetkunde.incorrect')} {t('common.correct_answer_was', answer=correct_answer_display)}",
@@ -151,6 +164,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -164,6 +180,8 @@ if feedback:
         st.success(message, icon="🏛️")
     else:
         st.error(message, icon="🧱")
+        st.caption(t("meetkunde.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

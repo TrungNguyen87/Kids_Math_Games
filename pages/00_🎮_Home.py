@@ -1,5 +1,6 @@
 import streamlit as st
 
+from utils import badges, profiles
 from utils.i18n import init_language, t
 from utils.state import GAME_KEYS, get_level, init_state
 from utils.ui import level_label, page_header, sidebar_common
@@ -7,12 +8,27 @@ from utils.ui import level_label, page_header, sidebar_common
 init_state()
 init_language()
 
+# Resolve the player name and load any saved profile for it BEFORE
+# rendering the sidebar (which shows the score) - otherwise the sidebar
+# would render with the pre-load score for one frame, contradicting the
+# "loaded your saved progress" message shown further down the same run.
+# The widget's own key ("player_name_input") isn't created until later in
+# this script, but its session-state value from the previous run is still
+# there (Streamlit clears a widget's key only when it *isn't* rendered on
+# the current page - this page renders it every time), so it's safe to
+# read here ahead of the actual st.text_input(...) call below.
+current_name = st.session_state.get("player_name_input", st.session_state.get("player_name", ""))
+just_loaded = False
+if current_name and st.session_state.get("loaded_profile_for") != current_name:
+    just_loaded = profiles.apply_profile(current_name)
+    st.session_state.loaded_profile_for = current_name
+    st.session_state.player_name = current_name
+
 with st.sidebar:
     st.image("https://api.dicebear.com/7.x/bottts/svg?seed=Math&backgroundColor=ffdfbf", width=150)
     sidebar_common()
 
 page_header("home.title", "home.subtitle", emoji="🎮")
-
 
 # The widget's own key ("player_name_input") is scoped to this page: Streamlit
 # clears a widget's session-state entry whenever the widget isn't rendered on
@@ -27,8 +43,12 @@ entered_name = st.text_input(
     placeholder=t("dash.player_name_placeholder"),
 )
 st.session_state.player_name = entered_name
+
 if entered_name:
-    st.success(t("home.player_saved", name=entered_name), icon="✅")
+    if just_loaded:
+        st.success(t("home.profile_loaded", name=entered_name, score=st.session_state.total_score), icon="🔄")
+    else:
+        st.success(t("home.player_saved", name=entered_name), icon="✅")
 
 st.markdown(t("home.intro"))
 
@@ -58,6 +78,18 @@ for row in (row1, row2):
         with col:
             lvl = get_level(key)
             st.metric(t(f"game.{key}.name"), f"{lvl}/5", level_label(lvl), delta_color="off")
+
+st.markdown("---")
+st.markdown(f"### {t('home.badges_heading')}")
+earned_badges = st.session_state.get("badges", [])
+if earned_badges:
+    st.markdown(
+        " &nbsp; ".join(
+            f"{badges.BADGE_EMOJI[b]} {t(f'badges.{b}.name')}" for b in earned_badges
+        )
+    )
+else:
+    st.caption(t("home.badges_none"))
 
 st.markdown("---")
 st.markdown(f"### {t('home.about_heading')}")

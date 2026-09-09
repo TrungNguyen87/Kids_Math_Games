@@ -2,7 +2,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -16,6 +16,7 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import array_grid_svg, skip_count_svg
 
 GAME_KEY = "tafel"
@@ -38,7 +39,9 @@ WORD_TEMPLATES = ["tafel.word_boxes", "tafel.word_rows", "tafel.word_moons"]
 
 
 def generate_problem():
-    if level == 1:
+    if level == 0:
+        a, b = random.randint(1, 3), random.randint(1, 5)
+    elif level == 1:
         a, b = random.randint(1, 5), random.randint(2, 10)
     elif level == 2:
         a, b = random.randint(2, 10), random.randint(2, 10)
@@ -131,8 +134,10 @@ if check_clicked:
             add_score(points)
             st.session_state.tafel_feedback = ("success", t("tafel.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.tafel_feedback = (
                 "error",
                 f"{t('tafel.incorrect')} {t('common.correct_answer_was', answer=problem['answer'])}",
@@ -141,6 +146,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -154,6 +162,8 @@ if feedback:
         st.success(message, icon="👽")
     else:
         st.error(message, icon="🛸")
+        st.caption(t("tafel.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

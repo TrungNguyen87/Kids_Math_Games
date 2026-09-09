@@ -2,7 +2,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -12,6 +12,7 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import level_control, page_header, sidebar_common
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import number_line_svg
 
 GAME_KEY = "getallen"
@@ -46,7 +47,18 @@ def generate_problem():
     answer_kind = "int"  # "int", "decimal1", or "two_part"
     visual = None
 
-    if level == 1:
+    if level == 0:
+        a = random.choice([v for v in range(-5, 6) if v != 0])
+        b = random.choice([v for v in range(-5, 6) if v != 0])
+        if random.choice([True, False]):
+            text = t("getallen.q_negative_add", a=fmt(a), b=fmt(b))
+            answer = a + b
+        else:
+            text = t("getallen.q_negative_sub", a=fmt(a), b=fmt(b))
+            answer = a - b
+        visual = number_line_svg(min(-10, a - 5), max(10, a + 5), [(a, "start")])
+
+    elif level == 1:
         a = random.choice([v for v in range(-15, 16) if v != 0])
         b = random.choice([v for v in range(-15, 16) if v != 0])
         if random.choice([True, False]):
@@ -164,8 +176,10 @@ if check_clicked:
             add_score(points)
             st.session_state.getallen_feedback = ("success", t("getallen.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.getallen_feedback = (
                 "error",
                 f"{t('getallen.incorrect')} {t('common.correct_answer_was', answer=correct_answer_display)}",
@@ -174,6 +188,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -187,6 +204,8 @@ if feedback:
         st.success(message, icon="🛰️")
     else:
         st.error(message, icon="☄️")
+        st.caption(t("getallen.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

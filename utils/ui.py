@@ -12,6 +12,7 @@ from utils.state import (
 )
 
 DIFFICULTY_KEYS = [
+    "common.difficulty_warmup",
     "common.difficulty_easy",
     "common.difficulty_medium",
     "common.difficulty_hard",
@@ -152,6 +153,7 @@ def sidebar_common(show_progress=True):
     session progress and a link to the parent dashboard."""
     language_switcher()
     show_player_name()
+    st.checkbox(t("sidebar.sound_toggle"), key="sound_enabled")
     show_score()
     if show_progress:
         show_session_progress()
@@ -160,7 +162,7 @@ def sidebar_common(show_progress=True):
 
 
 def level_label(level):
-    idx = max(0, min(len(DIFFICULTY_KEYS) - 1, level - 1))
+    idx = max(0, min(len(DIFFICULTY_KEYS) - 1, level))
     return t(DIFFICULTY_KEYS[idx])
 
 
@@ -179,7 +181,7 @@ def level_control(game_key, problem_state_key=None):
     only something that happens invisibly in the background."""
     current = get_level(game_key)
     st.markdown(f"**{t('common.choose_level')}**")
-    cols = st.columns(MAX_LEVEL)
+    cols = st.columns(MAX_LEVEL - MIN_LEVEL + 1)
     for i, col in enumerate(cols, start=MIN_LEVEL):
         with col:
             is_current = i == current
