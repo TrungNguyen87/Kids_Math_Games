@@ -13,6 +13,12 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import level_control, page_header, sidebar_common
+from utils.anim import (
+    feedback_banner,
+    play_pending_celebration,
+    question_card,
+    queue_celebration,
+)
 from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import ratio_bar_svg, speed_diagram_svg
 
@@ -107,7 +113,10 @@ def generate_problem():
     else:
         speed = random.choice(range(20, 121, 4))
         time = random.randint(1, 4)
-        extra_min = random.choice([0, 15, 30, 45])
+        # 15/30/45 only: an "extra" of 0 produced questions that read
+        # "... in 3 hours and 0 minutes", which is both clumsy and not the
+        # multi-step problem this level is meant to be asking.
+        extra_min = random.choice([15, 30, 45])
         distance = speed * (time * 60 + extra_min) // 60
         text = t("verhoudingen.q_multi_step", speed=speed, time=time, extra_min=extra_min)
         answer = distance
@@ -129,7 +138,7 @@ if "verhoudingen_problem" not in st.session_state or st.session_state.verhouding
 
 problem = st.session_state.verhoudingen_problem
 
-st.markdown(f"### 🚗 {problem['text']}")
+question_card(problem["text"], emoji="🚗")
 
 if problem["visual"]:
     st.markdown(problem["visual"], unsafe_allow_html=True)
@@ -171,10 +180,12 @@ if check_clicked:
             )
         if leveled_up:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+            queue_celebration()
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         for badge_id, emoji in badges.check_new_badges():
             st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+            queue_celebration()
         profiles.save_current_profile()
         st.rerun()
 
@@ -186,11 +197,11 @@ feedback = st.session_state.get("verhoudingen_feedback")
 if feedback:
     kind, message = feedback
     if kind == "success":
-        st.success(message, icon="🏁")
+        feedback_banner("success", message, icon="🏁")
     else:
-        st.error(message, icon="🚧")
-        st.caption(t("verhoudingen.why_tip"))
+        feedback_banner("error", message, tip=t("verhoudingen.why_tip"), icon="🚧")
 play_pending()
+play_pending_celebration()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

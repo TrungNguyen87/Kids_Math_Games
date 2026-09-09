@@ -16,6 +16,12 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.anim import (
+    feedback_banner,
+    play_pending_celebration,
+    question_card,
+    queue_celebration,
+)
 from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import clock_svg, ratio_bar_svg, tape_diagram_svg
 
@@ -52,6 +58,16 @@ def format_euro(value):
     return text
 
 
+def format_decimal(value):
+    """Format a plain decimal (no trailing zeros) using the decimal
+    separator of the selected language - Dutch writes 0,5 where English
+    writes 0.5."""
+    text = f"{value:g}"
+    if st.session_state.get("language", "nl") == "nl":
+        text = text.replace(".", ",")
+    return text
+
+
 def generate_problem():
     answer_kind = "int"  # "int" or "euro"
     visual = None
@@ -83,10 +99,17 @@ def generate_problem():
         answer_label = t("meten.answer_label_generic")
 
     elif level == 2:
+        # Only offer decimal steps that convert to a *whole* number of the
+        # smaller unit. With the old "any step x any factor, then round()"
+        # version, 0.25 cm became "2 mm" (round(2.5) rounds to even) and
+        # 0.75 cm became "8 mm" - both mathematically wrong, and the true
+        # answer (2.5 / 7.5 mm) couldn't even be typed into the whole-number
+        # input box.
         unit1, unit2, factor = random.choice(CONVERSIONS)
-        val1 = random.choice(DECIMAL_STEPS)
-        val2 = round(val1 * factor)
-        text = f"{val1} {unit1} = ... {unit2}?"
+        usable = [s for s in DECIMAL_STEPS if (s * factor).is_integer()]
+        val1 = random.choice(usable)
+        val2 = int(round(val1 * factor))
+        text = t("meten.q_convert", v1=format_decimal(val1), u1=unit1, v2=val2, u2=unit2)
         answer = val2
         answer_label = t("meten.answer_label_generic")
 
@@ -143,7 +166,7 @@ if "meten_problem" not in st.session_state or st.session_state.meten_problem is 
 
 problem = st.session_state.meten_problem
 
-st.markdown(f"### 🧱 {problem['text']}")
+question_card(problem["text"], emoji="🧱")
 
 visual = problem.get("visual")
 if visual and visual[0] == "clock":
@@ -200,10 +223,12 @@ if check_clicked:
             )
         if leveled_up:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+            queue_celebration()
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         for badge_id, emoji in badges.check_new_badges():
             st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+            queue_celebration()
         profiles.save_current_profile()
         st.rerun()
 
@@ -215,11 +240,11 @@ feedback = st.session_state.get("meten_feedback")
 if feedback:
     kind, message = feedback
     if kind == "success":
-        st.success(message, icon="👷")
+        feedback_banner("success", message, icon="👷")
     else:
-        st.error(message, icon="🚧")
-        st.caption(t("meten.why_tip"))
+        feedback_banner("error", message, tip=t("meten.why_tip"), icon="🚧")
 play_pending()
+play_pending_celebration()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

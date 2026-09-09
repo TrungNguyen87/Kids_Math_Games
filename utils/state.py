@@ -18,6 +18,13 @@ GAME_KEYS = [
     "meetkunde",
     "verhoudingen",
     "getallen",
+    # Round 5: logic and speed games. They share the same level/streak/badge
+    # machinery as the arithmetic games, so they count towards "tried every
+    # game" and show up on the home page's level overview like the rest.
+    "bliksem",
+    "logica",
+    "code",
+    "jacht",
 ]
 
 

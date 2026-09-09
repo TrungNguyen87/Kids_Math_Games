@@ -12,6 +12,12 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import level_control, page_header, sidebar_common
+from utils.anim import (
+    feedback_banner,
+    play_pending_celebration,
+    question_card,
+    queue_celebration,
+)
 from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import cuboid_svg, rectangle_svg, triangle_svg
 
@@ -89,11 +95,25 @@ def generate_problem():
         shape = random.choice(["triangle", "quadrilateral"])
         total = 180 if shape == "triangle" else 360
         n = 3 if shape == "triangle" else 4
-        for _ in range(30):
-            given = [random.randint(35, 95) for _ in range(n - 1)]
-            missing = total - sum(given)
-            if 10 <= missing <= 150:
-                break
+        # Pick the missing angle FIRST, then split what's left over the given
+        # angles. The old version rejection-sampled and, if all 30 tries
+        # failed, fell through with whatever the last (rejected) draw was -
+        # for a triangle that can be a negative angle, e.g. "95 + 95 = 180,
+        # what is the third angle?" with -10 as the expected answer.
+        missing = random.randint(20, 100)
+        remaining = total - missing
+        given = []
+        for i in range(n - 1):
+            slots_left = n - 1 - i
+            if slots_left == 1:
+                given.append(remaining)
+            else:
+                # Leave at least 20 degrees for each angle still to come.
+                lo = max(20, remaining - 140 * (slots_left - 1))
+                hi = min(140, remaining - 20 * (slots_left - 1))
+                pick = random.randint(lo, max(lo, hi))
+                given.append(pick)
+                remaining -= pick
         given_text = " + ".join(str(g) for g in given)
         shape_text = t(f"meetkunde.shape_{shape}")
         text = t("meetkunde.q_angle", shape=shape_text, total=total, given=given_text)
@@ -114,7 +134,7 @@ if "meetkunde_problem" not in st.session_state or st.session_state.meetkunde_pro
 
 problem = st.session_state.meetkunde_problem
 
-st.markdown(f"### 📐 {problem['text']}")
+question_card(problem["text"], emoji="📐")
 
 visual = problem["visual"]
 if visual[0] == "rect":
@@ -162,10 +182,12 @@ if check_clicked:
             )
         if leveled_up:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+            queue_celebration()
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         for badge_id, emoji in badges.check_new_badges():
             st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+            queue_celebration()
         profiles.save_current_profile()
         st.rerun()
 
@@ -177,11 +199,11 @@ feedback = st.session_state.get("meetkunde_feedback")
 if feedback:
     kind, message = feedback
     if kind == "success":
-        st.success(message, icon="🏛️")
+        feedback_banner("success", message, icon="🏛️")
     else:
-        st.error(message, icon="🧱")
-        st.caption(t("meetkunde.why_tip"))
+        feedback_banner("error", message, tip=t("meetkunde.why_tip"), icon="🧱")
 play_pending()
+play_pending_celebration()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

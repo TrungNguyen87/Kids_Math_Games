@@ -64,6 +64,10 @@ st.markdown(
 * {t('home.game_meetkunde')}
 * {t('home.game_verhoudingen')}
 * {t('home.game_getallen')}
+* {t('home.game_bliksem')}
+* {t('home.game_jacht')}
+* {t('home.game_logica')}
+* {t('home.game_code')}
 * {t('home.game_uitleg')}
 * {t('home.game_dashboard')}
 """
@@ -71,9 +75,12 @@ st.markdown(
 
 st.markdown("---")
 st.markdown(f"### {t('home.level_overview')}")
-row1, row2 = GAME_KEYS[: len(GAME_KEYS) // 2], GAME_KEYS[len(GAME_KEYS) // 2 :]
-for row in (row1, row2):
-    cols = st.columns(len(row))
+# Four per row: with 12 games, splitting into two rows of six left the
+# metric labels too narrow to read on a laptop.
+PER_ROW = 4
+rows = [GAME_KEYS[i : i + PER_ROW] for i in range(0, len(GAME_KEYS), PER_ROW)]
+for row in rows:
+    cols = st.columns(PER_ROW)
     for col, key in zip(cols, row):
         with col:
             lvl = get_level(key)

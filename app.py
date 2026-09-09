@@ -30,6 +30,10 @@ algebra = st.Page("pages/07_🕵️_Het_X-Mysterie.py", title=t("nav.algebra"), 
 meetkunde = st.Page("pages/08_📐_Meetkunde_Meesters.py", title=t("nav.meetkunde"), icon="📐", url_path="meetkunde")
 verhoudingen = st.Page("pages/09_🚗_Verhoudingen_en_Snelheid.py", title=t("nav.verhoudingen"), icon="🚗", url_path="verhoudingen")
 getallen = st.Page("pages/10_🔢_Getallen_Universum.py", title=t("nav.getallen"), icon="🔢", url_path="getallen")
+bliksem = st.Page("pages/11_⚡_Bliksemronde.py", title=t("nav.bliksem"), icon="⚡", url_path="bliksemronde")
+logica = st.Page("pages/12_🧠_Logica_Lab.py", title=t("nav.logica"), icon="🧠", url_path="logica")
+code = st.Page("pages/13_🔐_Code_Kraker.py", title=t("nav.code"), icon="🔐", url_path="code")
+jacht = st.Page("pages/14_🎯_Getallenjacht.py", title=t("nav.jacht"), icon="🎯", url_path="getallenjacht")
 uitleg = st.Page("pages/05_📖_Uitleg_Concepten.py", title=t("nav.uitleg"), icon="📖", url_path="uitleg")
 dashboard = st.Page("pages/06_📊_Ouder_Dashboard.py", title=t("nav.dashboard"), icon="📊", url_path="dashboard")
 
@@ -44,6 +48,12 @@ pg = st.navigation(
         meetkunde,
         verhoudingen,
         getallen,
+        # Speed and logic games are grouped after the arithmetic ones, so
+        # the menu reads as "practise, then play with what you practised".
+        bliksem,
+        jacht,
+        logica,
+        code,
         uitleg,
         dashboard,  # kept last on purpose - the parent-facing page
     ]

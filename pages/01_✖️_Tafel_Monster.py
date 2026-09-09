@@ -16,6 +16,12 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.anim import (
+    feedback_banner,
+    play_pending_celebration,
+    question_card,
+    queue_celebration,
+)
 from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import array_grid_svg, skip_count_svg
 
@@ -101,7 +107,7 @@ if "tafel_problem" not in st.session_state or st.session_state.tafel_problem is 
 
 problem = st.session_state.tafel_problem
 
-st.markdown(f"### 👾 {problem['text']}")
+question_card(problem["text"], emoji="👾")
 
 with st.expander(t("common.show_visual_hint")):
     if problem["q_type"] in ("missing_factor", "division"):
@@ -144,10 +150,12 @@ if check_clicked:
             )
         if leveled_up:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+            queue_celebration()
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         for badge_id, emoji in badges.check_new_badges():
             st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+            queue_celebration()
         profiles.save_current_profile()
         st.rerun()
 
@@ -159,11 +167,11 @@ feedback = st.session_state.get("tafel_feedback")
 if feedback:
     kind, message = feedback
     if kind == "success":
-        st.success(message, icon="👽")
+        feedback_banner("success", message, icon="👽")
     else:
-        st.error(message, icon="🛸")
-        st.caption(t("tafel.why_tip"))
+        feedback_banner("error", message, tip=t("tafel.why_tip"), icon="🛸")
 play_pending()
+play_pending_celebration()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))
