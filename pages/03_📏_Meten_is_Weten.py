@@ -14,7 +14,6 @@ from utils.state import (
 from utils.ui import (
     level_control,
     page_header,
-    set_custom_css,
     sidebar_common,
 )
 from utils.visuals import clock_svg, ratio_bar_svg, tape_diagram_svg
@@ -23,9 +22,6 @@ GAME_KEY = "meten"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Meten is Weten", page_icon="📏", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()

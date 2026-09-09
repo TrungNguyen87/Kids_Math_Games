@@ -4,13 +4,10 @@ import streamlit as st
 from utils import gamelog
 from utils.i18n import init_language, t
 from utils.state import init_state
-from utils.ui import page_header, set_custom_css, sidebar_common
+from utils.ui import page_header, sidebar_common
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Ouder Dashboard", page_icon="📊", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()
@@ -123,6 +120,9 @@ if st.session_state.get("confirm_clear_history"):
     st.warning(t("dash.clear_history_confirm"))
     if st.button(t("dash.clear_history_confirm_button")):
         gamelog.clear_history()
+        st.session_state.log = []
         st.session_state.confirm_clear_history = False
-        st.success(t("dash.clear_history_done"))
+        # st.toast (unlike st.success) survives the rerun below, so the
+        # confirmation is actually visible instead of being wiped instantly.
+        st.toast(t("dash.clear_history_done"), icon="🗑️")
         st.rerun()

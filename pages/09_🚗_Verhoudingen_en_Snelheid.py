@@ -12,16 +12,13 @@ from utils.state import (
     register_attempt,
     reset_streak,
 )
-from utils.ui import level_control, page_header, set_custom_css, sidebar_common
+from utils.ui import level_control, page_header, sidebar_common
 from utils.visuals import ratio_bar_svg, speed_diagram_svg
 
 GAME_KEY = "verhoudingen"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Verhoudingen & Snelheid", page_icon="🚗", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()
@@ -73,17 +70,17 @@ def generate_problem():
             text = t("verhoudingen.q_speed_find_speed", distance=distance, time=time)
             answer = speed
             answer_label = t("verhoudingen.answer_label_kmh")
-            visual = speed_diagram_svg(distance, "km", time, "uur")
+            visual = speed_diagram_svg(distance, "km", time, t("units.hour"))
         elif subtype == "find_distance":
             text = t("verhoudingen.q_speed_find_distance", time=time, speed=speed)
             answer = distance
             answer_label = t("verhoudingen.answer_label_km")
-            visual = speed_diagram_svg(speed, "km/u", time, "uur")
+            visual = speed_diagram_svg(speed, t("units.kmh"), time, t("units.hour"))
         else:
             text = t("verhoudingen.q_speed_find_time", distance=distance, speed=speed)
             answer = time
             answer_label = t("verhoudingen.answer_label_hour")
-            visual = speed_diagram_svg(distance, "km", speed, "km/u")
+            visual = speed_diagram_svg(distance, "km", speed, t("units.kmh"))
 
     elif level == 4:
         answer_kind = "euro"
@@ -103,7 +100,7 @@ def generate_problem():
         text = t("verhoudingen.q_multi_step", speed=speed, time=time, extra_min=extra_min)
         answer = distance
         answer_label = t("verhoudingen.answer_label_km")
-        visual = speed_diagram_svg(f"{speed} km/u", "", f"{time}u {extra_min}min", "")
+        visual = speed_diagram_svg(f"{speed} {t('units.kmh')}", "", f"{time}{t('units.hour_abbr')} {extra_min}{t('units.min_abbr')}", "")
 
     st.session_state.verhoudingen_problem = {
         "text": text,

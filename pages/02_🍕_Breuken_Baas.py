@@ -1,3 +1,4 @@
+import math
 import random
 
 import streamlit as st
@@ -14,7 +15,6 @@ from utils.state import (
 from utils.ui import (
     level_control,
     page_header,
-    set_custom_css,
     sidebar_common,
 )
 from utils.visuals import fraction_visual_svg
@@ -23,9 +23,6 @@ GAME_KEY = "breuken"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Breuken Baas", page_icon="🍕", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()
@@ -41,11 +38,14 @@ points = 5 * (level + 1)
 with st.expander(t("common.try_it_heading"), expanded=False):
     st.markdown(t("breuken.explore_intro"))
     exp_col1, exp_col2 = st.columns(2)
-    with exp_col1:
-        explore_num = st.number_input(t("breuken.numerator_label"), min_value=0, max_value=20, value=1, step=1, key="explore_num")
     with exp_col2:
-        explore_den = st.number_input(t("breuken.denominator_label"), min_value=1, max_value=20, value=4, step=1, key="explore_den")
-    explore_num = min(explore_num, explore_den)
+        explore_den = st.slider(t("breuken.denominator_label"), min_value=1, max_value=20, value=4, step=1, key="explore_den")
+    if st.session_state.get("explore_num", 0) > explore_den:
+        st.session_state.explore_num = explore_den
+    with exp_col1:
+        # Numerator can't exceed the (possibly just-changed) denominator, so
+        # dragging the denominator slider down always keeps a valid fraction.
+        explore_num = st.slider(t("breuken.numerator_label"), min_value=0, max_value=explore_den, value=min(1, explore_den), step=1, key="explore_num")
     st.markdown(fraction_visual_svg(explore_num, explore_den), unsafe_allow_html=True)
 
 
@@ -75,7 +75,10 @@ def generate_problem():
     elif level == 3:
         factor = random.randint(2, 4)
         simplified_den = random.choice([2, 3, 4, 5, 6])
-        simplified_num = random.randint(1, simplified_den - 1)
+        # Must be coprime with simplified_den, otherwise this "fully
+        # simplified" fraction (e.g. 2/4) wouldn't actually be in lowest
+        # terms, contradicting the question's "simplify as far as possible".
+        simplified_num = random.choice([n for n in range(1, simplified_den) if math.gcd(n, simplified_den) == 1])
         den = simplified_den * factor
         num = simplified_num * factor
         text = t("breuken.q_simplify", n=num, d=den, new_d=simplified_den)

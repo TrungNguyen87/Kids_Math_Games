@@ -14,18 +14,14 @@ from utils.state import (
 from utils.ui import (
     level_control,
     page_header,
-    set_custom_css,
     sidebar_common,
 )
-from utils.visuals import array_grid_svg
+from utils.visuals import array_grid_svg, skip_count_svg
 
 GAME_KEY = "tafel"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Tafel Monster", page_icon="✖️", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()
@@ -64,6 +60,7 @@ def generate_problem():
         type_choices.append("word")
     q_type = random.choice(type_choices)
 
+    known_factor = None  # set for missing_factor/division: the one factor still given in the question
     if q_type == "mult":
         text = t("tafel.q_mult", a=a, b=b)
         answer = product
@@ -71,17 +68,28 @@ def generate_problem():
         if random.choice([True, False]):
             text = t("tafel.q_missing_b", a=a, product=product)
             answer = b
+            known_factor = a
         else:
             text = t("tafel.q_missing_a", b=b, product=product)
             answer = a
+            known_factor = b
     elif q_type == "division":
         text = t("tafel.q_division", product=product, a=a)
         answer = b
+        known_factor = a
     else:
         text = t(random.choice(WORD_TEMPLATES), a=a, b=b)
         answer = product
 
-    st.session_state.tafel_problem = {"text": text, "answer": answer, "a": a, "b": b}
+    st.session_state.tafel_problem = {
+        "text": text,
+        "answer": answer,
+        "a": a,
+        "b": b,
+        "product": product,
+        "q_type": q_type,
+        "known_factor": known_factor,
+    }
     st.session_state.tafel_feedback = None
 
 
@@ -93,7 +101,16 @@ problem = st.session_state.tafel_problem
 st.markdown(f"### 👾 {problem['text']}")
 
 with st.expander(t("common.show_visual_hint")):
-    st.markdown(array_grid_svg(problem["a"], problem["b"]), unsafe_allow_html=True)
+    if problem["q_type"] in ("missing_factor", "division"):
+        # The unknown here is one of the two factors, so an accurate a x b
+        # grid would let a child read the answer straight off by counting a
+        # side - that's the direct answer, not a hint. Instead, show a
+        # skip-counting number line for the *known* factor: the child still
+        # has to count hops to the target themselves.
+        st.markdown(t("common.skip_count_hint", step=problem["known_factor"]))
+        st.markdown(skip_count_svg(problem["known_factor"], problem["product"]), unsafe_allow_html=True)
+    else:
+        st.markdown(array_grid_svg(problem["a"], problem["b"]), unsafe_allow_html=True)
 
 user_ans = st.number_input(t("common.your_answer"), step=1, value=None, key="tafel_input")
 
