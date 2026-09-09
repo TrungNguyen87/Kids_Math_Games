@@ -3,7 +3,7 @@ from datetime import datetime
 
 import streamlit as st
 
-MIN_LEVEL = 1
+MIN_LEVEL = 0   # level 0 is an extra-gentle "warm-up" tier below the graded 1-5 scale
 MAX_LEVEL = 5
 LEVEL_UP_STREAK = 3     # correct answers in a row needed to level up
 LEVEL_DOWN_STREAK = 2   # wrong answers in a row that trigger a level down
@@ -45,6 +45,12 @@ def init_state():
         st.session_state.game_streaks = {key: {"correct": 0, "wrong": 0} for key in GAME_KEYS}
     if "log" not in st.session_state:
         st.session_state.log = []
+    if "sound_enabled" not in st.session_state:
+        st.session_state.sound_enabled = True
+    if "badges" not in st.session_state:
+        st.session_state.badges = []
+    if "games_tried" not in st.session_state:
+        st.session_state.games_tried = set()
 
 
 def add_score(points=10):
@@ -84,6 +90,7 @@ def register_attempt(game_key, is_correct):
     Returns (leveled_up, leveled_down).
     """
     st.session_state.questions_answered += 1
+    st.session_state.setdefault("games_tried", set()).add(game_key)
     streak = st.session_state.game_streaks.setdefault(game_key, {"correct": 0, "wrong": 0})
     leveled_up = False
     leveled_down = False

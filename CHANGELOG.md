@@ -5,6 +5,27 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (round 4 - fun & difficulty-range improvements)
+- **Persistent player profiles.** Score, levels, and badges are now saved
+  to disk per player name (`logs/player_profiles.json`) and restored the
+  next time that name is entered - a kid no longer starts from zero every
+  time they open the app (`utils/profiles.py`).
+- **Milestone badges**: questions-answered tiers (10/50/100), streak
+  badges (5/10 in a row), "tried every game", "reached level 5", and
+  "level 5 in every game" - shown on the home page and toasted the moment
+  they're earned (`utils/badges.py`).
+- **Sound effects** for correct/incorrect answers - short tones synthesized
+  on the fly (no external audio files or network calls) via a hidden
+  autoplay `<audio>` tag, with a sidebar toggle to turn them off
+  (`utils/sound.py`).
+- **A gentler "Warm-up" level (0)** below the existing 1-5 scale in every
+  game, for kids who find even the current easiest level too hard. The
+  adaptive system still levels a confident kid up out of it within 3
+  correct answers.
+- **"Why" tips on wrong answers**: a short, game-specific strategy
+  reminder now shows next to "the answer was X" instead of just the
+  correction on its own.
+
 ### Fixed (round 3)
 - **Menu now actually follows the language toggle.** Switched from
   Streamlit's filename-based `pages/` auto-discovery to an explicit

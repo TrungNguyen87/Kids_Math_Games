@@ -2,7 +2,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -12,6 +12,7 @@ from utils.state import (
     reset_streak,
 )
 from utils.ui import level_control, page_header, sidebar_common
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import balance_scale_svg
 
 GAME_KEY = "algebra"
@@ -34,7 +35,17 @@ points = 5 * (level + 1)
 def generate_problem():
     two_var = False
 
-    if level == 1:
+    if level == 0:
+        # Warm-up: addition only, small numbers - no subtraction yet.
+        a = random.randint(1, 5)
+        x = random.randint(1, 10)
+        b = a + x
+        text = t("algebra.q_add", a=a, b=b)
+        left = f"x + {a}"
+        answer = {"x": x}
+        visual = [(left, str(b))]
+
+    elif level == 1:
         a = random.randint(1, 15)
         if random.choice([True, False]):
             x = random.randint(1, 20)
@@ -165,8 +176,10 @@ if check_clicked:
             add_score(points)
             st.session_state.algebra_feedback = ("success", t("algebra.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.algebra_feedback = (
                 "error",
                 f"{t('algebra.incorrect')} {t('common.correct_answer_was', answer=correct_answer)}",
@@ -175,6 +188,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -188,6 +204,8 @@ if feedback:
         st.success(message, icon="🕵️")
     else:
         st.error(message, icon="🧩")
+        st.caption(t("algebra.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

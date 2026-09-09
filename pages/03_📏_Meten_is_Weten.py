@@ -2,7 +2,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -16,6 +16,7 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import clock_svg, ratio_bar_svg, tape_diagram_svg
 
 GAME_KEY = "meten"
@@ -55,7 +56,20 @@ def generate_problem():
     answer_kind = "int"  # "int" or "euro"
     visual = None
 
-    if level == 1:
+    if level == 0:
+        unit1, unit2, factor = random.choice(CONVERSIONS[:2])  # cm/mm or m/cm only - smaller factors
+        if random.choice([True, False]):
+            val1 = random.randint(1, 10)
+            val2 = val1 * factor
+            text = t("meten.q_convert", v1=val1, u1=unit1, v2=val2, u2=unit2)
+        else:
+            val2 = random.randint(1, 10)
+            val1 = val2 * factor
+            text = t("meten.q_convert", v1=val1, u1=unit2, v2=val2, u2=unit1)
+        answer = val2
+        answer_label = t("meten.answer_label_generic")
+
+    elif level == 1:
         unit1, unit2, factor = random.choice(CONVERSIONS)
         if random.choice([True, False]):
             val1 = random.randint(1, 20)
@@ -176,8 +190,10 @@ if check_clicked:
             add_score(points)
             st.session_state.meten_feedback = ("success", t("meten.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.meten_feedback = (
                 "error",
                 f"{t('meten.incorrect')} {t('common.correct_answer_was', answer=correct_answer_display)}",
@@ -186,6 +202,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -199,6 +218,8 @@ if feedback:
         st.success(message, icon="👷")
     else:
         st.error(message, icon="🚧")
+        st.caption(t("meten.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

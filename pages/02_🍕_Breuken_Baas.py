@@ -3,7 +3,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -17,6 +17,7 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import fraction_visual_svg
 
 GAME_KEY = "breuken"
@@ -50,7 +51,15 @@ with st.expander(t("common.try_it_heading"), expanded=False):
 
 
 def generate_problem():
-    if level == 1:
+    if level == 0:
+        den = random.choice([2, 4])
+        n1 = random.randint(1, den - 1)
+        n2 = random.randint(1, den - n1)
+        text = t("breuken.q_add", n1=n1, n2=n2, d=den)
+        correct_num, correct_den = n1 + n2, den
+        den_editable = False
+        visual_fracs = [(n1, den), (n2, den)]
+    elif level == 1:
         den = random.choice([4, 6, 8, 10])
         n1 = random.randint(1, den - 1)
         n2 = random.randint(1, den - n1)
@@ -162,8 +171,10 @@ if check_clicked:
             add_score(points)
             st.session_state.breuk_feedback = ("success", t("breuken.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.breuk_feedback = (
                 "error",
                 f"{t('breuken.incorrect')} {t('common.correct_answer_was', answer=correct_answer)}",
@@ -172,6 +183,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -185,6 +199,8 @@ if feedback:
         st.success(message, icon="🎉")
     else:
         st.error(message, icon="🔥")
+        st.caption(t("breuken.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

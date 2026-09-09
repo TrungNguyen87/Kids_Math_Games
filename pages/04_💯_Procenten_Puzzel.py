@@ -3,7 +3,7 @@ import random
 
 import streamlit as st
 
-from utils import gamelog
+from utils import badges, gamelog, profiles
 from utils.i18n import init_language, t
 from utils.state import (
     add_score,
@@ -17,6 +17,7 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import fraction_visual_svg, percent_bar_svg
 
 GAME_KEY = "procenten"
@@ -43,6 +44,10 @@ with st.expander(t("common.try_it_heading"), expanded=False):
     decimal = f"{explore_pct / 100:.2f}"
     st.markdown(percent_bar_svg(explore_pct, label=f"{explore_pct}% = {simplified} = {decimal}"), unsafe_allow_html=True)
 
+VERY_EASY_EQUIVALENTS = [
+    ("1/2", "50%", "0.50"),
+    ("1/4", "25%", "0.25"),
+]
 EASY_EQUIVALENTS = [
     ("1/2", "50%", "0.50"),
     ("1/4", "25%", "0.25"),
@@ -67,10 +72,17 @@ def nice_base_for(pct):
 
 
 def generate_problem():
-    if level == 1 or level == 4:
-        equivalents = EASY_EQUIVALENTS if level == 1 else HARD_EQUIVALENTS
+    if level in (0, 1, 4):
+        if level == 0:
+            equivalents = VERY_EASY_EQUIVALENTS
+        elif level == 1:
+            equivalents = EASY_EQUIVALENTS
+        else:
+            equivalents = HARD_EQUIVALENTS
         fraction, percentage, decimal = random.choice(equivalents)
-        q_type = random.choice(["frac_to_perc", "perc_to_dec", "dec_to_frac"])
+        # Level 0 sticks to the simplest direction (recognizing a fraction
+        # as a percentage) instead of also asking for decimal conversions.
+        q_type = "frac_to_perc" if level == 0 else random.choice(["frac_to_perc", "perc_to_dec", "dec_to_frac"])
         all_fracs = [e[0] for e in equivalents]
         all_percs = [e[1] for e in equivalents]
         all_decs = [e[2] for e in equivalents]
@@ -186,8 +198,10 @@ if check_clicked:
             add_score(points)
             st.session_state.perc_feedback = ("success", t("procenten.correct", points=points))
             st.balloons()
+            queue_correct()
         else:
             reset_streak()
+            queue_incorrect()
             st.session_state.perc_feedback = (
                 "error",
                 f"{t('procenten.incorrect')} {t('common.correct_answer_was', answer=problem['answer'])}",
@@ -196,6 +210,9 @@ if check_clicked:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
+        for badge_id, emoji in badges.check_new_badges():
+            st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+        profiles.save_current_profile()
         st.rerun()
 
 if next_clicked:
@@ -209,6 +226,8 @@ if feedback:
         st.success(message, icon="💰")
     else:
         st.error(message, icon="☠️")
+        st.caption(t("procenten.why_tip"))
+play_pending()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))
