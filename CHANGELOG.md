@@ -5,6 +5,50 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (round 3)
+- **Menu now actually follows the language toggle.** Switched from
+  Streamlit's filename-based `pages/` auto-discovery to an explicit
+  `st.navigation`/`st.Page` router in `app.py`, rebuilt from `t()` on every
+  rerun - previously the sidebar menu always showed the Dutch filenames
+  regardless of the NL/EN toggle. This also makes page order explicit, so
+  the Parent Dashboard is now always the last item instead of sitting in
+  the middle of the list.
+- **Player name now actually saves.** Streamlit clears a widget's
+  session-state entry whenever that widget isn't rendered on the current
+  page, so binding `player_name` directly to the home page's `text_input`
+  key meant it was wiped the instant you navigated to a game. The durable
+  value now lives in its own session-state key, re-seeded into the widget
+  every time the home page runs; the sidebar also shows "Playing as: ..."
+  on every page so it's clear the name was saved.
+- **Tafel Monster's hint no longer gives away the answer.** For
+  missing-factor/division questions, the old hint drew an accurate a×b
+  dot grid, so counting one side of it read off the missing factor
+  directly. It now shows a skip-counting number line for the known
+  factor with the product flagged as a target - the child still has to
+  count the hops themselves (`utils/visuals.py: skip_count_svg`).
+- **More interactive visuals.** Breuken Baas's fraction explorer now uses
+  draggable sliders instead of number inputs; Procenten Puzzel and
+  Meetkunde Meesters gained their own slider-driven live explorers
+  (percent bar; rectangle width/height with live perimeter & area).
+- **Cheat sheet (Uitleg Concepten) now covers all 8 games**, not just the
+  original 4 - added NL/EN explanations for equations (X-Mysterie),
+  geometry, ratios/speed, and negative numbers/long arithmetic.
+- Hardcoded Dutch text that ignored the language toggle: percentage
+  visual captions ("van"/"korting"), speed-diagram units ("uur"/"km/u"),
+  and shape-label words baked into `utils/visuals.py` (basis/hoogte/totaal,
+  and the cuboid width label using the Dutch "b" abbreviation even in
+  English).
+- Breuken Baas's "simplify as far as possible" question could generate a
+  fraction that wasn't actually fully reduced (e.g. asking to simplify to
+  2/4 instead of 1/2); the numerator is now always coprime with the target
+  denominator.
+- Clicking the already-active level button reset that game's
+  adaptive-difficulty streak counters for no reason.
+- "Clear all history" on the Parent Dashboard didn't clear the current
+  session's in-memory log (so answered questions kept reappearing in the
+  table) and its confirmation message was immediately wiped by the rerun
+  that followed it; both are fixed.
+
 ### Added (round 2)
 - **Manual level picker.** Every game now shows a row of clickable 1-5
   level buttons at the top (`utils/ui.py: level_control`), so leveling up

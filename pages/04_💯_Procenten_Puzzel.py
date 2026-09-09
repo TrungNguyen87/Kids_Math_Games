@@ -15,7 +15,6 @@ from utils.state import (
 from utils.ui import (
     level_control,
     page_header,
-    set_custom_css,
     sidebar_common,
 )
 from utils.visuals import fraction_visual_svg, percent_bar_svg
@@ -24,9 +23,6 @@ GAME_KEY = "procenten"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Procenten Puzzel", page_icon="💯", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()
@@ -38,6 +34,14 @@ st.markdown(t("procenten.intro"))
 level_control(GAME_KEY, "perc_problem")
 level = get_level(GAME_KEY)
 points = 5 * (level + 1)
+
+with st.expander(t("common.try_it_heading"), expanded=False):
+    st.markdown(t("procenten.explore_intro"))
+    explore_pct = st.slider(t("procenten.explore_pct_label"), min_value=0, max_value=100, value=50, step=1, key="explore_pct")
+    divisor = math.gcd(explore_pct, 100) or 100
+    simplified = f"{explore_pct // divisor}/{100 // divisor}"
+    decimal = f"{explore_pct / 100:.2f}"
+    st.markdown(percent_bar_svg(explore_pct, label=f"{explore_pct}% = {simplified} = {decimal}"), unsafe_allow_html=True)
 
 EASY_EQUIVALENTS = [
     ("1/2", "50%", "0.50"),
@@ -104,7 +108,7 @@ def generate_problem():
             "text": text,
             "answer": answer,
             "answer_label": t("procenten.answer_label_number"),
-            "visual": ("pct", pct, f"{pct}% van {base}"),
+            "visual": ("pct", pct, t("procenten.visual_pct_of", pct=pct, base=base)),
         }
 
     elif level == 3:
@@ -122,7 +126,7 @@ def generate_problem():
             "text": text,
             "answer": answer,
             "answer_label": t("procenten.answer_label_euro"),
-            "visual": ("pct", pct, f"{pct}% korting"),
+            "visual": ("pct", pct, t("procenten.visual_discount", pct=pct)),
         }
 
     else:  # level 5: reverse percentage
@@ -141,7 +145,7 @@ def generate_problem():
             "text": text,
             "answer": original,
             "answer_label": t("procenten.answer_label_euro"),
-            "visual": ("pct", complement, f"jij betaalt nog {complement}%"),
+            "visual": ("pct", complement, t("procenten.visual_pay_percent", complement=complement)),
         }
 
     st.session_state.perc_feedback = None

@@ -136,10 +136,22 @@ def show_session_progress():
     )
 
 
+def show_player_name():
+    """Displays the currently entered player name (or a nudge to set one)
+    so it's visible on every page, not just the home page - makes it clear
+    the name was actually saved to the session."""
+    name = st.session_state.get("player_name", "")
+    if name:
+        st.markdown(t("sidebar.playing_as", name=name))
+    else:
+        st.caption(t("sidebar.no_player_name"))
+
+
 def sidebar_common(show_progress=True):
     """Standard sidebar block used on every page: language toggle, score,
     session progress and a link to the parent dashboard."""
     language_switcher()
+    show_player_name()
     show_score()
     if show_progress:
         show_session_progress()
@@ -176,7 +188,10 @@ def level_control(game_key, problem_state_key=None):
                 key=f"level_btn_{game_key}_{i}",
                 type="primary" if is_current else "secondary",
                 use_container_width=True,
-            ):
+            ) and not is_current:
+                # Clicking the already-active level is a no-op: skip it so it
+                # doesn't reset the adaptive-difficulty streak counters for
+                # no reason.
                 set_level(game_key, i)
                 if problem_state_key:
                     st.session_state[problem_state_key] = None

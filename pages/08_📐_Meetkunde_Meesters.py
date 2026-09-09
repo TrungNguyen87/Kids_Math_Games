@@ -11,7 +11,7 @@ from utils.state import (
     register_attempt,
     reset_streak,
 )
-from utils.ui import level_control, page_header, set_custom_css, sidebar_common
+from utils.ui import level_control, page_header, sidebar_common
 from utils.visuals import cuboid_svg, rectangle_svg, triangle_svg
 
 GAME_KEY = "meetkunde"
@@ -19,9 +19,6 @@ UNIT = "cm"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Meetkunde Meesters", page_icon="📐", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()
@@ -33,6 +30,16 @@ st.markdown(t("meetkunde.intro"))
 level_control(GAME_KEY, "meetkunde_problem")
 level = get_level(GAME_KEY)
 points = 5 * (level + 1)
+
+with st.expander(t("common.try_it_heading"), expanded=False):
+    st.markdown(t("meetkunde.explore_intro"))
+    exp_col1, exp_col2 = st.columns(2)
+    with exp_col1:
+        explore_w = st.slider(t("meetkunde.width_label"), min_value=1, max_value=15, value=6, step=1, key="explore_w")
+    with exp_col2:
+        explore_h = st.slider(t("meetkunde.height_label"), min_value=1, max_value=15, value=4, step=1, key="explore_h")
+    st.markdown(rectangle_svg(explore_w, explore_h, unit=UNIT), unsafe_allow_html=True)
+    st.markdown(t("meetkunde.explore_result", perimeter=2 * (explore_w + explore_h), area=explore_w * explore_h, unit=UNIT))
 
 
 def generate_problem():

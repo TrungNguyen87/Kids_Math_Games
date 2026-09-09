@@ -11,16 +11,13 @@ from utils.state import (
     register_attempt,
     reset_streak,
 )
-from utils.ui import level_control, page_header, set_custom_css, sidebar_common
+from utils.ui import level_control, page_header, sidebar_common
 from utils.visuals import balance_scale_svg
 
 GAME_KEY = "algebra"
 
 init_state()
 init_language()
-
-st.set_page_config(page_title="Het X-Mysterie", page_icon="🕵️", layout="wide")
-set_custom_css()
 
 with st.sidebar:
     sidebar_common()

@@ -6,6 +6,8 @@ of just numbers on a screen.
 """
 import math
 
+from utils.i18n import t
+
 # A warm, consistent, kid-friendly palette used across every visual.
 FILL = "#ffb74d"
 EMPTY = "#fff3e0"
@@ -163,7 +165,7 @@ def tape_diagram_svg(total, part, width=280, height=46, total_label=None, part_l
         <rect x="0" y="20" width="{width}" height="{height}" fill="{EMPTY}" stroke="{STROKE}" stroke-width="2" rx="6"/>
         <rect x="0" y="20" width="{part_w:.1f}" height="{height}" fill="{ACCENT2}" rx="6"/>
         <line x1="{part_w:.1f}" y1="14" x2="{part_w:.1f}" y2="{height + 26}" stroke="{STROKE}" stroke-width="2" stroke-dasharray="4,3"/>
-        <text x="{width / 2}" y="14" text-anchor="middle" font-size="14" fill="{STROKE}">totaal: {total_label}</text>
+        <text x="{width / 2}" y="14" text-anchor="middle" font-size="14" fill="{STROKE}">{t('visual.total')}: {total_label}</text>
         <text x="{max(24, part_w / 2):.1f}" y="{20 + height / 2 + 5}" text-anchor="middle" font-size="14" font-weight="bold" fill="#ffffff">{part_label}</text>
         <text x="{part_w + max(24, (width - part_w) / 2):.1f}" y="{20 + height / 2 + 5}" text-anchor="middle" font-size="14" font-weight="bold" fill="{STROKE}">{rest_label}</text>
     </svg>"""
@@ -250,6 +252,42 @@ def number_line_svg(lo, hi, points, width=320, height=90):
     </svg>"""
 
 
+def skip_count_svg(step, target, width=320, height=100):
+    """A skip-counting number line: ticks at 0, step, 2*step, 3*step, ...
+    up to just past `target`, with the target highlighted. Used as a
+    *guidance* hint for missing-factor/division problems - it requires the
+    child to count how many hops it takes to reach the target themselves,
+    rather than printing the missing factor (the answer) directly."""
+    step = max(1, int(step))
+    target = max(step, int(target))
+    hops_to_target = target // step
+    n_hops = min(hops_to_target + 1, 14)
+    margin = 26
+    usable = width - 2 * margin
+    y = height * 0.45
+
+    def x_of(i):
+        return margin + usable * i / n_hops
+
+    ticks = []
+    for i in range(n_hops + 1):
+        value = i * step
+        x = x_of(i)
+        is_target = value == target
+        color = DANGER if is_target else STROKE
+        r = 6 if is_target else 4
+        ticks.append(f'<line x1="{x:.1f}" y1="{y-8}" x2="{x:.1f}" y2="{y+8}" stroke="{STROKE}" stroke-width="1.5"/>')
+        ticks.append(f'<circle cx="{x:.1f}" cy="{y}" r="{r}" fill="{color}"/>')
+        ticks.append(f'<text x="{x:.1f}" y="{y+24}" text-anchor="middle" font-size="12" font-weight="{"bold" if is_target else "normal"}" fill="{color}">{value}</text>')
+        if is_target:
+            ticks.append(f'<text x="{x:.1f}" y="{y-16}" text-anchor="middle" font-size="16">🚩</text>')
+
+    return f"""<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+        <line x1="{margin}" y1="{y}" x2="{x_of(n_hops):.1f}" y2="{y}" stroke="{STROKE}" stroke-width="2"/>
+        {''.join(ticks)}
+    </svg>"""
+
+
 def rectangle_svg(w, h, unit="", width=260, height=180):
     """A labeled rectangle for perimeter/area questions."""
     pad = 40
@@ -276,8 +314,8 @@ def triangle_svg(base, height_val, unit="", width=260, height=180):
     return f"""<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
         <polygon points="{x0:.1f},{y0:.1f} {x0+tb:.1f},{y0:.1f} {apex_x:.1f},{apex_y:.1f}" fill="{FILL}" stroke="{STROKE}" stroke-width="3"/>
         <line x1="{apex_x:.1f}" y1="{apex_y:.1f}" x2="{apex_x:.1f}" y2="{y0:.1f}" stroke="{STROKE}" stroke-width="1.5" stroke-dasharray="4,3"/>
-        <text x="{x0+tb/2:.1f}" y="{y0+18:.1f}" text-anchor="middle" font-size="14" font-weight="bold" fill="{STROKE}">basis: {base} {unit}</text>
-        <text x="{apex_x+10:.1f}" y="{(apex_y+y0)/2:.1f}" font-size="14" font-weight="bold" fill="{STROKE}">hoogte: {height_val} {unit}</text>
+        <text x="{x0+tb/2:.1f}" y="{y0+18:.1f}" text-anchor="middle" font-size="14" font-weight="bold" fill="{STROKE}">{t('visual.base')}: {base} {unit}</text>
+        <text x="{apex_x+10:.1f}" y="{(apex_y+y0)/2:.1f}" font-size="14" font-weight="bold" fill="{STROKE}">{t('visual.height')}: {height_val} {unit}</text>
     </svg>"""
 
 
@@ -300,9 +338,9 @@ def cuboid_svg(l, w, h, unit="", width=260, height=200):
         <polygon points="{pts(top)}" fill="#ffe0b2" stroke="{STROKE}" stroke-width="2"/>
         <polygon points="{pts(side)}" fill="#ffb74d" stroke="{STROKE}" stroke-width="2"/>
         <polygon points="{pts(front)}" fill="#ffcc80" stroke="{STROKE}" stroke-width="2"/>
-        <text x="{ox+L/2:.1f}" y="{oy+18:.1f}" text-anchor="middle" font-size="13" font-weight="bold" fill="{STROKE}">l={l}{unit}</text>
-        <text x="{ox-14:.1f}" y="{oy-H/2:.1f}" text-anchor="middle" font-size="13" font-weight="bold" fill="{STROKE}">h={h}{unit}</text>
-        <text x="{ox+L+W*dx/2+8:.1f}" y="{oy-W*dy/2+4:.1f}" text-anchor="middle" font-size="13" font-weight="bold" fill="{STROKE}">b={w}{unit}</text>
+        <text x="{ox+L/2:.1f}" y="{oy+18:.1f}" text-anchor="middle" font-size="13" font-weight="bold" fill="{STROKE}">{t('visual.length_abbr')}={l}{unit}</text>
+        <text x="{ox-14:.1f}" y="{oy-H/2:.1f}" text-anchor="middle" font-size="13" font-weight="bold" fill="{STROKE}">{t('visual.height_abbr')}={h}{unit}</text>
+        <text x="{ox+L+W*dx/2+8:.1f}" y="{oy-W*dy/2+4:.1f}" text-anchor="middle" font-size="13" font-weight="bold" fill="{STROKE}">{t('visual.width_abbr')}={w}{unit}</text>
     </svg>"""
 
 
