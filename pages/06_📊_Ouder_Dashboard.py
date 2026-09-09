@@ -77,7 +77,10 @@ st.markdown("---")
 st.markdown(f"#### {t('dash.table_heading')}")
 display_df = view_df[
     ["timestamp", "player", "game", "level", "question", "student_answer", "correct_answer", "result", "points"]
-].rename(
+].copy()
+display_df["student_answer"] = display_df["student_answer"].astype(str)
+display_df["correct_answer"] = display_df["correct_answer"].astype(str)
+display_df = display_df.rename(
     columns={
         "timestamp": t("dash.col_time"),
         "player": t("dash.col_player"),
@@ -90,7 +93,7 @@ display_df = view_df[
         "points": t("dash.col_points"),
     }
 )
-st.dataframe(display_df, width="stretch", hide_index=True)
+st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 # --- Downloads -----------------------------------------------------------------
 dl1, dl2 = st.columns(2)

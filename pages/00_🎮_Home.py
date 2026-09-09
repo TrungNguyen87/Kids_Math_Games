@@ -1,6 +1,7 @@
 import streamlit as st
 
 from utils import badges, profiles
+from utils.anim import feedback_banner, queue_celebration
 from utils.i18n import init_language, t
 from utils.state import GAME_KEYS, get_level, init_state
 from utils.ui import level_label, page_header, sidebar_common
@@ -46,9 +47,9 @@ st.session_state.player_name = entered_name
 
 if entered_name:
     if just_loaded:
-        st.success(t("home.profile_loaded", name=entered_name, score=st.session_state.total_score), icon="🔄")
+        feedback_banner("success", t("home.profile_loaded", name=entered_name, score=st.session_state.total_score), icon="🔄")
     else:
-        st.success(t("home.player_saved", name=entered_name), icon="✅")
+        feedback_banner("success", t("home.player_saved", name=entered_name), icon="✅")
 
 st.markdown(t("home.intro"))
 
@@ -104,6 +105,6 @@ st.markdown(t("home.about_text"))
 
 if st.session_state.get("total_score", 0) == 0 and st.session_state.get("games_played", 0) == 0:
     if st.button(t("home.start_button")):
-        st.balloons()
+        queue_celebration()
         st.session_state.games_played += 1
         st.rerun()

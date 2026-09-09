@@ -169,7 +169,7 @@ if check_clicked:
         if is_correct:
             add_score(points)
             st.session_state.verhoudingen_feedback = ("success", t("verhoudingen.correct", points=points))
-            st.balloons()
+            queue_celebration()
             queue_correct()
         else:
             reset_streak()

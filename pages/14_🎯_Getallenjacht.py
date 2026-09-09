@@ -19,7 +19,7 @@ import time
 
 import streamlit as st
 
-from utils.anim import play_pending_celebration, queue_celebration, timer_bar
+from utils.anim import feedback_banner, play_pending_celebration, queue_celebration, timer_bar
 from utils.gameflow import adapt_after_round, settle_answer
 from utils.i18n import init_language, t
 from utils.sound import play_pending, queue_correct, queue_incorrect
@@ -242,10 +242,10 @@ else:
 
     st.markdown(f"### {t('jacht.round_over')}")
     if st.session_state.get("jacht_cleared"):
-        st.balloons()
-        st.success(t("jacht.cleared_banner", points=st.session_state.get("jacht_round_points", 0)), icon="🏆")
+        queue_celebration()
+        feedback_banner("success", t("jacht.cleared_banner", points=st.session_state.get("jacht_round_points", 0)), icon="🏆")
     elif st.session_state.get("jacht_lives", 1) <= 0:
-        st.error(t("jacht.out_of_lives"), icon="💔")
+        feedback_banner("error", t("jacht.out_of_lives"), icon="💔")
     else:
         st.info(t("jacht.time_up"), icon="⏰")
 

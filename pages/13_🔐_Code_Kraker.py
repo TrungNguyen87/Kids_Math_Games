@@ -15,7 +15,7 @@ import random
 
 import streamlit as st
 
-from utils.anim import play_pending_celebration, question_card, queue_celebration
+from utils.anim import feedback_banner, play_pending_celebration, question_card, queue_celebration
 from utils.gameflow import settle_answer
 from utils.i18n import init_language, t
 from utils.sound import play_pending, queue_correct, queue_incorrect
@@ -136,7 +136,7 @@ if not solved and not gave_up and guesses_left > 0:
         if duplicate_problem:
             # Not a wrong answer, just an impossible one under this level's
             # rules - so it is neither logged nor counted against the budget.
-            st.warning(t("code.no_repeats_warning"), icon="⚠️")
+            feedback_banner("error", t("code.no_repeats_warning"), icon="⚠️")
         else:
             exact, misplaced = score_guess(secret, guess)
             st.session_state.code_guesses.append((guess, exact, misplaced))
@@ -188,12 +188,12 @@ if not solved and not gave_up and guesses_left > 0:
 else:
     if solved:
         used = len(guesses)
-        st.balloons()
-        st.success(t("code.cracked_banner", code=" ".join(str(d) for d in secret), guesses=used), icon="🔓")
+        queue_celebration()
+        feedback_banner("success", t("code.cracked_banner", code=" ".join(str(d) for d in secret), guesses=used), icon="🔓")
     elif gave_up:
         st.info(t("code.revealed", code=" ".join(str(d) for d in secret)), icon="🙈")
     else:
-        st.error(t("code.out_of_guesses", code=" ".join(str(d) for d in secret)), icon="⏳")
+        feedback_banner("error", t("code.out_of_guesses", code=" ".join(str(d) for d in secret)), icon="⏳")
 
     if st.button(t("code.new_code_button"), key="code_new", type="primary"):
         new_code()

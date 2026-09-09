@@ -22,8 +22,10 @@ import time
 import streamlit as st
 
 from utils.anim import (
+    feedback_banner,
     play_pending_celebration,
     question_card,
+    queue_celebration,
     timer_bar,
 )
 from utils.gameflow import adapt_after_round, settle_answer
@@ -201,9 +203,9 @@ elif state == "running":
     if last:
         ok, shown_answer, elapsed = last
         if ok:
-            st.success(t("bliksem.quick_correct", seconds=f"{elapsed:.1f}"), icon="⚡")
+            feedback_banner("success", t("bliksem.quick_correct", seconds=f"{elapsed:.1f}"), icon="⚡")
         else:
-            st.error(t("bliksem.quick_wrong", answer=shown_answer), icon="💨")
+            feedback_banner("error", t("bliksem.quick_wrong", answer=shown_answer), icon="💨")
 
     cols = st.columns(4)
     for i, (col, option) in enumerate(zip(cols, problem["options"])):
@@ -264,8 +266,8 @@ else:
 
     st.markdown(f"### {t('bliksem.round_over')}")
     if st.session_state.pop("bliksem_new_record", False):
-        st.balloons()
-        st.success(t("bliksem.new_record", best=correct), icon="🏆")
+        queue_celebration()
+        feedback_banner("success", t("bliksem.new_record", best=correct), icon="🏆")
 
     res1, res2, res3, res4 = st.columns(4)
     res1.metric(t("bliksem.stat_correct"), correct)
@@ -278,7 +280,7 @@ else:
     if total == 0:
         st.info(t("bliksem.no_answers"), icon="🤔")
     elif accuracy >= 80:
-        st.success(t("bliksem.praise_high"), icon="🌟")
+        feedback_banner("success", t("bliksem.praise_high"), icon="🌟")
     elif accuracy >= 50:
         st.info(t("bliksem.praise_mid"), icon="👍")
     else:

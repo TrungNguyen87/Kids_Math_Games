@@ -181,7 +181,7 @@ if check_clicked:
         if is_correct:
             add_score(points)
             st.session_state.getallen_feedback = ("success", t("getallen.correct", points=points))
-            st.balloons()
+            queue_celebration()
             queue_correct()
         else:
             reset_streak()
