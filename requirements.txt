@@ -1,2 +1,8 @@
-streamlit>=1.37,<2.0
+# streamlit >= 1.49 is required, not just a preference:
+#   - st.dataframe(width="stretch") / st.button(width="stretch") replaced the
+#     old use_container_width argument in 1.49, and older versions reject the
+#     string value outright.
+#   - st.navigation / st.Page (app.py's router) needs >= 1.36.
+#   - st.fragment(run_every=...) (the timed games) needs >= 1.37.
+streamlit>=1.49,<2.0
 pandas>=2.0,<3.0

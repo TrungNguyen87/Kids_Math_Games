@@ -1,5 +1,6 @@
 import streamlit as st
 
+from utils import anim
 from utils.i18n import language_switcher, t
 from utils.state import (
     MAX_LEVEL,
@@ -98,21 +99,21 @@ def set_custom_css():
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
+    # Keyframes + animation utility classes live in utils/anim.py so the
+    # motion vocabulary stays in one place instead of being scattered
+    # through the page-level CSS above.
+    st.markdown(anim.animation_css(), unsafe_allow_html=True)
 
 
 def show_score():
-    """Displays the global score in the sidebar or main area."""
-    score = st.session_state.get("total_score", 0)
-    streak = st.session_state.get("streaks", 0)
-
-    st.markdown(
-        f"""
-        <div class="score-container">
-            🌟 <strong>{t('sidebar.score')}: {score}</strong><br>
-            🔥 <strong>{t('sidebar.streak')}: {streak}</strong>
-        </div>
-    """,
-        unsafe_allow_html=True,
+    """Displays the global score in the sidebar or main area. Delegates to
+    anim.score_flash so the box pops (and shows a +N) on the runs where the
+    score actually went up."""
+    anim.score_flash(
+        st.session_state.get("total_score", 0),
+        st.session_state.get("streaks", 0),
+        t("sidebar.score"),
+        t("sidebar.streak"),
     )
 
 
@@ -167,8 +168,14 @@ def level_label(level):
 
 
 def show_level_badge(level):
+    """The ⭐ Level N badge. It pops once when the level has actually just
+    changed (adaptively or via the picker) and then sits still - a badge
+    that bounced on every rerun would stop meaning "you levelled up"."""
+    changed = st.session_state.get("_anim_prev_level_badge") != level
+    st.session_state["_anim_prev_level_badge"] = level
+    cls = "level-badge kmg-levelup" if changed else "level-badge"
     st.markdown(
-        f"<div class='level-badge'>⭐ {t('common.level')} {level}/{MAX_LEVEL} — {level_label(level)}</div>",
+        f"<div class='{cls}'>⭐ {t('common.level')} {level}/{MAX_LEVEL} — {level_label(level)}</div>",
         unsafe_allow_html=True,
     )
 
@@ -189,7 +196,7 @@ def level_control(game_key, problem_state_key=None):
                 str(i),
                 key=f"level_btn_{game_key}_{i}",
                 type="primary" if is_current else "secondary",
-                use_container_width=True,
+                width="stretch",
             ) and not is_current:
                 # Clicking the already-active level is a no-op: skip it so it
                 # doesn't reset the adaptive-difficulty streak counters for

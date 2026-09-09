@@ -17,6 +17,12 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.anim import (
+    feedback_banner,
+    play_pending_celebration,
+    question_card,
+    queue_celebration,
+)
 from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import fraction_visual_svg
 
@@ -128,7 +134,7 @@ if "breuk_problem" not in st.session_state or st.session_state.breuk_problem is 
 
 problem = st.session_state.breuk_problem
 
-st.markdown(f"### 🍕 {problem['text']}")
+question_card(problem["text"], emoji="🍕")
 
 visual_cols = st.columns(len(problem["visual_fracs"]))
 for vcol, (vn, vd) in zip(visual_cols, problem["visual_fracs"]):
@@ -160,9 +166,25 @@ with col_btn2:
 if check_clicked:
     answered = user_num is not None and (not problem["den_editable"] or user_den is not None)
     if answered:
-        is_correct = user_num == problem["correct_num"] and user_den == problem["correct_den"]
+        # Accept any fraction *equal in value* to the expected one, not just
+        # the literal numerator/denominator pair. A question like "4/8 - 1/8"
+        # has 3/8 as its expected answer, but "5/8 - 1/8" expects 4/8 - and a
+        # child who does the sum correctly and then simplifies to 1/2 (exactly
+        # what we teach them to do) used to be marked wrong. Cross-multiplying
+        # avoids float rounding entirely.
+        is_correct = (
+            user_den is not None
+            and user_den > 0
+            and user_num * problem["correct_den"] == problem["correct_num"] * user_den
+        )
         student_answer = f"{user_num}/{user_den}"
         correct_answer = f"{problem['correct_num']}/{problem['correct_den']}"
+        # When the expected answer isn't in lowest terms, show the simplified
+        # form alongside it so "the answer was 4/8" also teaches "= 1/2"
+        # (and makes clear why typing 1/2 is now accepted too).
+        _g = math.gcd(problem["correct_num"], problem["correct_den"])
+        if _g > 1:
+            correct_answer += f" (= {problem['correct_num'] // _g}/{problem['correct_den'] // _g})"
         gamelog.log_attempt(
             GAME_KEY, t("game.breuken.name"), level, problem["text"], student_answer, correct_answer, is_correct, points
         )
@@ -181,10 +203,12 @@ if check_clicked:
             )
         if leveled_up:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+            queue_celebration()
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         for badge_id, emoji in badges.check_new_badges():
             st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+            queue_celebration()
         profiles.save_current_profile()
         st.rerun()
 
@@ -196,11 +220,11 @@ feedback = st.session_state.get("breuk_feedback")
 if feedback:
     kind, message = feedback
     if kind == "success":
-        st.success(message, icon="🎉")
+        feedback_banner("success", message, icon="🎉")
     else:
-        st.error(message, icon="🔥")
-        st.caption(t("breuken.why_tip"))
+        feedback_banner("error", message, tip=t("breuken.why_tip"), icon="🔥")
 play_pending()
+play_pending_celebration()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

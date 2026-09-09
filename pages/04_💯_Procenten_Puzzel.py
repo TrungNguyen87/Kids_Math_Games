@@ -17,6 +17,12 @@ from utils.ui import (
     page_header,
     sidebar_common,
 )
+from utils.anim import (
+    feedback_banner,
+    play_pending_celebration,
+    question_card,
+    queue_celebration,
+)
 from utils.sound import play_pending, queue_correct, queue_incorrect
 from utils.visuals import fraction_visual_svg, percent_bar_svg
 
@@ -168,7 +174,7 @@ if "perc_problem" not in st.session_state or st.session_state.perc_problem is No
 
 problem = st.session_state.perc_problem
 
-st.markdown(f"### 💎 {problem['text']}")
+question_card(problem["text"], emoji="💎")
 
 visual = problem.get("visual")
 if visual and visual[0] == "frac":
@@ -208,10 +214,12 @@ if check_clicked:
             )
         if leveled_up:
             st.toast(t("common.level_up", level=get_level(GAME_KEY)), icon="🚀")
+            queue_celebration()
         elif leveled_down:
             st.toast(t("common.level_down", level=get_level(GAME_KEY)), icon="💪")
         for badge_id, emoji in badges.check_new_badges():
             st.toast(t(f"badges.{badge_id}.name"), icon=emoji)
+            queue_celebration()
         profiles.save_current_profile()
         st.rerun()
 
@@ -223,11 +231,11 @@ feedback = st.session_state.get("perc_feedback")
 if feedback:
     kind, message = feedback
     if kind == "success":
-        st.success(message, icon="💰")
+        feedback_banner("success", message, icon="💰")
     else:
-        st.error(message, icon="☠️")
-        st.caption(t("procenten.why_tip"))
+        feedback_banner("error", message, tip=t("procenten.why_tip"), icon="☠️")
 play_pending()
+play_pending_celebration()
 
 if st.session_state.get("streaks", 0) >= 3:
     st.info(t("common.streak_fire", streak=st.session_state.streaks))

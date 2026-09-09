@@ -5,6 +5,107 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (round 5 - animation, logic & speed games, classroom plan)
+- **Animation layer** (`utils/anim.py` + animated SVGs in `utils/visuals.py`).
+  Pure CSS keyframes and inline-SVG animation - no new dependency and no
+  JavaScript (Streamlit strips `<script>` from markdown anyway):
+  - Every visual now *builds itself*: pizza slices fill one at a time, dot
+    arrays pop in row by row, percent/tape/ratio bars grow from zero, clock
+    hands sweep round to the time, the number line's markers drop in, hop
+    arcs draw in counting order, rectangles and triangles draw their own
+    outline before the fill washes in, the cuboid assembles face by face,
+    and the balance scale rocks and settles level.
+  - Each question arrives in an animated card that slides up with a single
+    light sweep, so it is obvious the question changed even when the new one
+    looks like the old one.
+  - Correct answers pop a green banner; wrong ones shake a red one. Level-ups
+    and new badges fire a CSS confetti burst, queued the same way sounds are
+    (rendering it before `st.rerun()` would throw it away).
+  - The sidebar score box pops and shows `+N` only on the runs where the
+    score actually went up, and the level badge pops only when the level
+    actually changed.
+  - Class names and element ids are scoped per render, so two visuals on one
+    page cannot animate each other, and **everything is switched off under
+    `prefers-reduced-motion`** - the finished picture shows immediately
+    instead.
+- **Four new games**, taking the app from 8 to 12:
+  - ⚡ **Bliksemronde / Lightning Round** - a 60-second speed round with four
+    answer buttons, a combo multiplier and a speed bonus for answering inside
+    3 seconds. The clock is an `st.fragment(run_every=1)` so it ticks without
+    rebuilding the answer buttons under the child's finger.
+  - 🎯 **Getallenjacht / Number Hunt** - a timed grid hunt: tap every multiple,
+    prime, square or digit-sum match before the clock runs out, with three
+    lives and a bonus for clearing the grid. Trains number *properties* from
+    the recognition side.
+  - 🧠 **Logica Lab / Logic Lab** - reasoning rather than calculating: number
+    and shape sequences, odd-one-out, if/then statements (including the
+    invalid converse, the classic slip at this age), a who-has-what deduction
+    grid, symbol balance puzzles and magic squares.
+  - 🔐 **Code Kraker / Code Breaker** - Mastermind with digits. Pure
+    elimination reasoning, scored on how few guesses it took.
+  All four have 6 levels, full NL/EN translation, session logging, badges and
+  the level picker, and are wired into the navigation, the home page and the
+  cheat sheet.
+- **`utils/gameflow.py`** - the shared "what happens after an answer" sequence
+  (log, adapt, score, feedback, toast, badges, save). The timed games adapt
+  their level **once per round** instead of per answer: inside a 60-second
+  round, three quick correct answers are just three easy draws, whereas
+  9-of-10 for a whole round really does mean "too easy".
+- **Cheat sheet** gained three new sections: logical thinking & patterns,
+  cracking codes, and faster mental maths (the 9-times trick, divisibility
+  by 3 and 4, what a prime is).
+- **`tests/test_app.py`** - 23 regression tests, runnable with plain
+  `python tests/test_app.py` or with pytest. They check translation parity
+  and that no `t()` call references an undefined key; that every page renders
+  at every level in both languages; the maths behind each bug fixed below;
+  Mastermind scoring against a reference implementation over all 4096
+  secret/guess pairs; that generated sequences actually follow the rule they
+  claim; that Number Hunt's targets match its stated rule; and that generated
+  SVG is well-formed and properly scoped.
+- **`docs/PLATFORM_ROADMAP.md`** - a phased development plan for turning the
+  app into a classroom platform (pupil accounts, live class view, per-child
+  development tracking, teacher-built exams), with six checkpoints where the
+  teacher decides rather than the developer reports. Includes the honest
+  assessment that Streamlit is unlikely to hold thirty concurrent pupils and
+  schedules that decision, with a load test, at Checkpoint 5.
+
+### Fixed (round 5)
+- **Meten is Weten level 2 gave mathematically wrong answers.** Decimal
+  conversions used `round(value * factor)`, so "0,25 cm = ... mm" expected
+  **2** (Python rounds 2.5 to even) and "0,75 cm = ... mm" expected **8**.
+  Both are wrong, and the true answers - 2.5 and 7.5 - could not have been
+  typed into the whole-number input anyway. Level 2 now offers only decimal
+  steps that convert to a whole number of the smaller unit. The question also
+  went through an f-string that bypassed the translation system, so Dutch
+  showed "0.5 cm" instead of "0,5 cm"; it now uses the template and a
+  language-aware decimal separator.
+- **Breuken Baas marked a correctly simplified answer wrong.** Grading
+  compared the literal numerator/denominator pair, so on "1/2 + 2/4" a child
+  who worked it out and then simplified 4/4 to 1/1 - exactly what we teach
+  them to do - was told they were wrong. Grading now cross-multiplies and
+  accepts any equal fraction, and when the expected answer is not in lowest
+  terms the feedback shows the simplified form beside it.
+- **Meetkunde Meesters could ask for a negative angle.** The missing-angle
+  generator rejection-sampled up to 30 times and then fell through using
+  whatever the last *rejected* draw was - for a triangle, that can be
+  "95 + 95 = 180, what is the third angle?" with -10 as the expected answer.
+  It now picks the missing angle first and splits the remainder, which is
+  correct by construction (verified over 200,000 trials).
+- **`requirements.txt` allowed a Streamlit too old to run the app.** The floor
+  was `>=1.37`, but the parent dashboard's `st.dataframe(width="stretch")`
+  needs `>=1.49`; older versions reject the string outright. Bumped, with the
+  reason written next to it.
+- Replaced `use_container_width`, which Streamlit has deprecated and will
+  remove, with `width="stretch"`.
+- Verhoudingen & Snelheid level 5 could ask how far a train travels "in 3
+  hours and 0 minutes".
+- `speed_diagram_svg` had a hardcoded English "in" between the distance and
+  the time (so Dutch read "120 km in 2 uur" with an English joiner), and used
+  a fixed `id="arrow"` for its arrowhead marker, which collides if two speed
+  diagrams ever share a page.
+- The home page's level overview split the games into two rows, which with 12
+  games left the labels too narrow to read; it now lays out four per row.
+
 ### Added (round 4 - fun & difficulty-range improvements)
 - **Persistent player profiles.** Score, levels, and badges are now saved
   to disk per player name (`logs/player_profiles.json`) and restored the

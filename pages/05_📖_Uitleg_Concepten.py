@@ -37,4 +37,13 @@ with st.expander(t("uitleg.topic_verhoudingen")):
 with st.expander(t("uitleg.topic_getallen")):
     st.markdown(t("uitleg.body_getallen"))
 
+with st.expander(t("uitleg.topic_logica")):
+    st.markdown(t("uitleg.body_logica"))
+
+with st.expander(t("uitleg.topic_code")):
+    st.markdown(t("uitleg.body_code"))
+
+with st.expander(t("uitleg.topic_snel")):
+    st.markdown(t("uitleg.body_snel"))
+
 st.info(t("uitleg.footer"))
