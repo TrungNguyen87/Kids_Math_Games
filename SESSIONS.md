@@ -9,6 +9,153 @@ rediscover them.
 
 ---
 
+## Session 6 — 10 September 2026
+
+**Branch:** `claude/game-deployment-platform-4sln0n`
+
+### Asked
+
+1. Streamlit may not be a good deployment target for interactive, visual,
+   animated games. Find a better **free** hosting option that is easy for kids
+   to reach and easy to deploy.
+2. Migrate all the games to it, improving interaction, animation and
+   visualisation along the way.
+3. Write a detailed step-by-step deployment guide.
+
+### Decided: GitHub Pages, and a static client-side app
+
+The platform question and the architecture question turned out to be the same
+question. The reason Streamlit hurts here is not that its hosting is bad — it
+is that **every tap is a server round-trip**, and these games are now animated
+and timed. The countdowns had to be faked with `st.fragment(run_every=1)`: one
+round-trip per second, stepping a whole second at a time, with the answer
+buttons deliberately placed outside the fragment because a rerun landing
+between render and click would swallow the tap. That is a lot of care spent
+working around the platform rather than on the game.
+
+So the fix is not "host Streamlit somewhere better". It is to make the app
+client-side, at which point the hosting question answers itself: any static
+host will do, and the cheapest, simplest one is the GitHub the code is already
+on.
+
+Cloudflare Pages and Netlify were the real alternatives and would both work.
+GitHub Pages won on one specific ground: **it needs nothing new.** No second
+account, no second dashboard, no second set of credentials to lose. For a
+project maintained in evenings that beats CDN benchmarks. It is also free
+without qualification here, because the repository is public.
+
+Three consequences worth stating plainly, since they were the actual decision:
+
+- **No cold start.** Streamlit Community Cloud sleeps an idle app; a child
+  opening a bookmark after school would get "this app has gone to sleep".
+- **It works offline.** A service worker precaches everything, so the games work
+  in the car and at a grandparent's house. This was not possible before at all.
+- **Results stop being a server file.** That is a real trade, not a pure win —
+  see below.
+
+### Done
+
+**All twelve games, plus home, the explainer and the parent dashboard**, ported
+to `web/` as plain ES modules. No build step, no framework, no bundler: what is
+in the repository is what the browser runs. Question generators, level curves,
+scoring, badges, adaptive difficulty and both languages were ported unchanged —
+the Node test suite exists mostly to prove that.
+
+**`utils/i18n.py` stayed the source of truth for copy.** `tools/gen_i18n.py`
+parses it with `ast` (no Streamlit import needed) and emits
+`web/js/i18n-data.js`, refusing to run if a key exists in one language and not
+the other. That is what stopped 473 strings drifting between two front-ends
+during the port.
+
+**The interaction work is where the platform move actually pays.** The number
+pad is the clearest example: `st.number_input` renders a small desktop spinner
+that, on a tablet, summons the OS keyboard over the visual and the question. A
+purpose-built pad in the calculator layout children already know is not a
+nicer version of that — it is the thing that makes a tablet usable at all.
+Similarly: correct answers auto-advance so a child in flow never hunts for
+"next" (wrong ones deliberately do not — that is the one moment they need to
+read); the fraction explorer is now the pizza itself, tapped slice by slice;
+Number Hunt restyles one tile per tap instead of rebuilding twenty buttons.
+
+**Animation and sound got the upgrade the CSS-only version could not have.**
+Canvas confetti with gravity and tumble, bursting from the button the child
+tapped. A full-screen level-up card, because the old toast was being missed.
+Web Audio effects generated at the instant of the tap, including a correct
+answer arpeggio that climbs a step for every answer in the streak — a small
+thing a child notices within about four answers. All of it still honours
+`prefers-reduced-motion`, on every single visual.
+
+**The dashboard charts are hand-written SVG**, which removed pandas and Altair
+from the payload. Both are single-measure charts, so both use one hue rather
+than a categorical palette — a rainbow of game colours would imply a
+distinction that is not in the data. The two hues were checked against the
+light and dark surfaces for contrast and lightness rather than picked by eye.
+
+### Found along the way
+
+**Two bugs a test suite would not have caught, both found by looking.**
+
+The first: at phone width, a semi-transparent overlay covered the entire app
+and swallowed every tap. The nav scrim's `display: block` inside a
+`@media (max-width: 900px)` block silently overrode the built-in
+`[hidden] { display: none }`. It was invisible in the desktop screenshots and
+the app still *rendered* correctly on a phone — it just could not be used.
+Found by noticing that a mobile screenshot looked washed out. The smoke test
+now hit-tests the first control at phone width and clicks it, so this class of
+bug fails loudly next time.
+
+The second: `Node.append(null)` prints the literal word "null". A conditional
+child written as `condition ? el(...) : null` renders as text, because
+`append()` stringifies its arguments. It was sitting under the streak counter
+in the sidebar on every screenshot. Fixed with a filtering `append()` helper.
+
+Both are worth remembering as a pattern: **the browser will happily render
+something wrong rather than throw.** The Node tests caught none of it; a
+screenshot caught both.
+
+**A third, smaller one:** headless Chromium will not screenshot at an exact
+small size — `--window-size` below ~500px and `--force-device-scale-factor`
+below 0.5 are both clamped. Rather than add Pillow for three icons,
+`tools/png_tool.py` crops and box-downscales PNGs with nothing but `zlib` and
+`struct`.
+
+### The trade being made, stated plainly
+
+**Results are now per device.** The Streamlit version wrote
+`logs/all_sessions_log.csv` on the server: one shared history, wiped on every
+redeploy. Browser storage is better in three ways — it survives redeploys, it
+survives being offline, and no child's data ever leaves their device — and
+worse in one: a tablet and a laptop keep separate histories.
+
+The CSV export is therefore prominent on the dashboard rather than at the
+bottom, and its columns are byte-identical to the ones `utils/gamelog.py`
+wrote, so an old export and a new one open side by side.
+
+This also settles most of `docs/PLATFORM_ROADMAP.md` section 6 for free: no
+server, no third party, no analytics, no external fonts or CDNs on any page a
+child sees. Worth noting for the roadmap: the classroom platform will still
+need a real backend, and nothing here blocks that — the generators, level curve
+and objective map are still portable logic, and a static front-end can talk to
+an API whenever one exists.
+
+### Still open
+
+- **The Streamlit app was deliberately not deleted.** `app.py`, `pages/` and
+  `utils/` still run, and `utils/i18n.py` is still the source of truth for
+  copy. Delete the Streamlit half once the web version has been used for a few
+  weeks and nothing turns out to be missing — that is a decision to make on
+  evidence, not on migration day.
+- **Pages has to be switched on once by hand:** Settings → Pages → Source =
+  *GitHub Actions*. It cannot be done from a workflow. `docs/DEPLOYMENT.md` §4
+  walks through it.
+- The parent dashboard shows the last 200 attempts in its table; everything
+  older is in the CSV. If a parent ever wants to scroll further, that becomes a
+  paging question.
+- No per-device sync, by design. If the roadmap's classroom platform happens,
+  that is where it belongs — not bolted onto the static app.
+
+---
+
 ## Session 5 — 9 September 2026
 
 **Branch:** `claude/edu-gaming-platform-plan-2e69e7`

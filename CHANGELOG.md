@@ -5,6 +5,141 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (round 6 - static web app, GitHub Pages, PWA)
+
+**The whole app now runs in the browser.** A new `web/` folder holds a static
+front-end with all twelve games, ported from the Streamlit pages, deployed to
+GitHub Pages. No build step, no framework, no bundler: plain HTML, one CSS
+file and ES modules, so what is in the repository is exactly what the browser
+runs.
+
+*Why:* Streamlit re-runs the whole Python script on every tap and streams the
+result back, which put the network inside the loop of an animated, timed game.
+The countdowns had to be faked with `st.fragment(run_every=1)` (one round-trip
+per second, stepping a whole second at a time) and the answer buttons had to
+sit outside that fragment or a rerun would swallow the tap. Streamlit Community
+Cloud also sleeps an idle app, so a child opening a bookmark after school gets
+a cold start instead of a game. The reasoning and the alternatives considered
+are written up in `docs/DEPLOYMENT.md`.
+
+- **Deployment** - `.github/workflows/deploy-pages.yml` publishes `web/` on every
+  push to `main`. Free, no second account, no server, no cold start. Full
+  click-by-click setup, update, custom-domain and troubleshooting guide in
+  **`docs/DEPLOYMENT.md`**.
+- **Works offline** - a service worker precaches the whole app, so after one
+  visit every game works with no network at all. Installable to a tablet's home
+  screen as a PWA (`manifest.webmanifest`, app icons including a maskable one).
+  The cache is named after the commit SHA, stamped in at deploy time, so a new
+  deploy invalidates it exactly once instead of stranding a child on an old
+  copy.
+
+### Improved interaction (the point of the move)
+
+- **Answers are instant.** No round-trip between a tap and the response.
+- **On-screen number pad**, in the calculator layout children already know
+  (7-8-9 / 4-5-6 / 1-2-3 / 0). `st.number_input` rendered a small desktop
+  spinner that, on a tablet, summoned the OS keyboard over the visual and the
+  question.
+- **Real-time clocks.** The timed games run a `requestAnimationFrame` loop
+  against a deadline, so the countdown ring sweeps at the screen's refresh rate
+  instead of stepping once a second - and the "answered in 1.2s" speed bonus
+  now measures the child rather than the wifi.
+- **A correct answer auto-advances** after a beat, so a child in flow never
+  hunts for "next". A wrong answer does not: that is the one moment they need
+  time to read what the answer should have been.
+- **Multiple choice is tappable cards**, and the right answer is revealed in
+  place after a wrong pick rather than only named in a sentence underneath.
+- **The fraction explorer is the pizza itself** - tap a slice to fill or empty
+  it and watch the fraction, decimal and percentage move together. It used to
+  be two sliders and a server round-trip per drag.
+- **Code Kraker takes digit taps** into slots instead of a column of dropdowns:
+  four taps rather than four select-and-scroll gestures, which matters when a
+  child gets nine guesses.
+- **Number Hunt restyles one tile per tap** instead of rebuilding all twenty
+  buttons, so the grid keeps up with a child who is going fast.
+- **Home page is game tiles**, each showing that game's level and progress bar,
+  instead of a markdown bullet list.
+
+### Improved animation and sound
+
+- **Canvas confetti with real physics** - gravity, drag and tumble, bursting
+  from the button the child actually tapped. The CSS version could only drop
+  divs in straight lines.
+- **A full-screen level-up card**, because a small toast was being missed.
+- **Floating "+15" points** out of the button that earned them.
+- **Web Audio sound effects**, synthesized in the browser at the instant of the
+  tap: a rising arpeggio for a correct answer that climbs a step for every
+  answer in the current streak, a fanfare for a level-up, a sparkle for a
+  badge, a tick over the last five seconds of a timed round. The Streamlit
+  version had to build a WAV file byte by byte in Python and base64 it into a
+  hidden autoplay tag.
+- **Dark mode**, because homework happens after dinner in winter.
+- The whole SVG visual library was ported with its animations intact, including
+  the per-render class scoping and the `prefers-reduced-motion` escape hatch on
+  every single visual.
+
+### Improved visualisation
+
+- **The parent dashboard's charts are hand-drawn SVG** - no pandas, no Altair.
+  A horizontal bar chart for accuracy per game, sorted so the hardest game is
+  at the top; a column chart for questions per day with only the peak labelled.
+  Both have hover tooltips, keyboard-focusable marks and a "show the numbers"
+  table. The two chart colours were validated against the light and dark
+  surfaces (contrast and lightness band) rather than picked by eye.
+- **Every badge is shown**, the unearned ones dimmed, so a child can see what
+  there is left to win.
+
+### Changed
+
+- **Results now live on the child's device**, in browser storage, instead of a
+  CSV on the server. Better in three ways - it survives redeploys (the old one
+  did not), it survives being offline, and no child's data leaves the machine -
+  and worse in one: a tablet and a laptop keep separate histories. The
+  dashboard's CSV export is therefore prominent, and its columns are identical
+  to the ones `utils/gamelog.py` wrote, so old and new exports open side by
+  side. This also settles most of the privacy questions in
+  `docs/PLATFORM_ROADMAP.md` section 6 for free: no server, no third party, no
+  analytics, no external fonts or CDNs on a page a child sees.
+- `utils/i18n.py` remains the single source of truth for copy in both
+  languages. `web/js/i18n-data.js` is generated from it by `tools/gen_i18n.py`,
+  which refuses to run if a key exists in one language and not the other.
+  14 new keys were added for the web-only UI (473 total).
+
+### Fixed
+
+- **The nav scrim covered the whole app at phone width.** Its `display: block`
+  inside a `@media (max-width: 900px)` block silently overrode the built-in
+  `[hidden] { display: none }`, so on every phone and tablet a semi-transparent
+  overlay sat on top of the game and swallowed every tap. Found by looking at a
+  screenshot, not by a test - so the browser smoke test now hit-tests the first
+  control at phone width and clicks it.
+- **`Node.append(null)` printed the word "null" on the page.** `append()`
+  stringifies its arguments, so a conditional child written as
+  `condition ? el(...) : null` rendered as text. It was visible under the
+  streak counter in the sidebar. Added a filtering `append()` helper in
+  `web/js/dom.js` and used it at the three sites with conditional children.
+
+### Tests
+
+- `tests/web/test_logic.mjs` - 62 tests run under `node --test`. Every question
+  generator is exercised several hundred times per level and checked against
+  the rule it has to keep: divisions divide exactly, "simplify" answers really
+  are in lowest terms, angles sum to 180 or 360 with no angle below 20 degrees,
+  long division's remainder is smaller than its divisor, one-decimal answers
+  have one decimal, every multiple-choice question contains its own answer,
+  Mastermind never counts a repeated digit twice, and every Number Hunt round
+  is winnable without tapping the whole grid. Plus NL/EN key parity, matching
+  placeholders per key, and SVG well-formedness.
+- `tests/web/smoke.mjs` - a real Chromium pass over all 15 routes, checking for
+  console errors, playing a question through the number pad, confirming it
+  reaches the dashboard, switching language, watching a countdown actually
+  tick, checking the phone layout is tappable and does not scroll sideways, and
+  reloading with the network off.
+- `tools/check_precache.py` - compares the service worker's precache list
+  against the files on disk in both directions. CI runs it before every deploy,
+  because a file missing from that list works perfectly in testing and then
+  404s offline, in front of a child.
+
 ### Added (round 5 - animation, logic & speed games, classroom plan)
 - **Animation layer** (`utils/anim.py` + animated SVGs in `utils/visuals.py`).
   Pure CSS keyframes and inline-SVG animation - no new dependency and no

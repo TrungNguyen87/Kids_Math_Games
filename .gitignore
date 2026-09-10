@@ -8,3 +8,9 @@ logs/
 # Streamlit agent skills (environment-specific symlinks)
 .agents/skills/developing-with-streamlit
 .claude/skills/developing-with-streamlit
+
+# Web front-end
+node_modules/
+package-lock.json
+# Screenshots from tests/web/smoke.mjs --screenshots
+tests/web/shots/
